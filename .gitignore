@@ -176,3 +176,4 @@ check.csv
 cache/
 ctchat/.env
 Notebooks/*.csv
+Notebooks/PAI_CT_Main.ipynb
