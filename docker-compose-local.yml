@@ -1,0 +1,19 @@
+version: "3.9"
+   
+services:
+  web:
+    build: .
+    container_name: clinical_trial_dev
+    command: bash -c "
+      python manage.py runserver 0.0.0.0:8000 --settings=POCClinicalTrial.settings.local
+      "
+    volumes:
+      - .:/code
+    ports:
+      - "8002:8002"
+    networks:
+      dorisnetwork: {}
+
+networks:
+  dorisnetwork:
+    external: true
