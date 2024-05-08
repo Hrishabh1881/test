@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import *
 import os
 from rest_framework.generics import CreateAPIView, ListAPIView
+from rest_framework.views import APIView
 from django.http import JsonResponse
 import openai 
 import json
@@ -127,14 +128,18 @@ class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
     serializer_class = DorisChatSerializer
     def post(self, request, *args, **kwargs):
         query = request.data.get('query', [])
-        print(query)
         payload = hybrid_v1_processor.ProcessQueryLocationList.process_query(query=query)
+        
         if query:
             if payload.empty:
                 json_payload_dict = {}
             else:
                 json_payload = pd.DataFrame(payload, columns=payload.columns).to_json(orient='records')
                 json_payload_dict = json.loads(json_payload)
+                for item in json_payload_dict:
+                    drugs_and_biomarkers = json.loads(item['DRUGS_AND_BIOMARKERS'])
+                    item.update(drugs_and_biomarkers)
+                    del item['DRUGS_AND_BIOMARKERS']
                 
             return JsonResponse({'Message':json_payload_dict})
         else:
@@ -165,6 +170,11 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
         else:
             return JsonResponse({'Message':'Zip code not entered'})
         
-        
+
+class FilterClinicalTrials(APIView):
+    
+    def get(self, request, *args, **kwargs):
+        print(dict(self.request.query_params))
+        return JsonResponse(dict(self.request.query_params))
         
         
