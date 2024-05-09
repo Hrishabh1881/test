@@ -164,7 +164,7 @@ class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
             
             ##ADD PARAMS HERE
             if not drugs and not biomarkers:
-                return JsonResponse({'ClinicalTrials': payload})
+                return JsonResponse({'filtered_trials': payload})
 
             filtered_trials = []
             for trial in payload:
@@ -202,7 +202,7 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
         
         
 
-class FilterClinicalTrials(APIView):
+class FilterClinicalTrialsDatabseView(APIView):
     
     def get(self, request, *args, **kwargs):
         print(request.sessions.get(['current_trial_data'],{}))
