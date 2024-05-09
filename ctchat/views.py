@@ -173,7 +173,7 @@ class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
         
         
             if filtered_trials:
-                return JsonResponse({'filtered_trials': filtered_trials})
+                return JsonResponse({'filtered_trials': filtered_trials}, status=200)
             else:
                 return JsonResponse({'message':'No trails match the filter parameters'}, status=400)
             
@@ -205,7 +205,7 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
 class FilterClinicalTrialsDatabseView(APIView):
     
     def get(self, request, *args, **kwargs):
-        print(request.sessions.get(['current_trial_data'],{}))
+        print(dict(request.query_params).get('condition_type'))
         return JsonResponse(dict(self.request.query_params))
         
         
