@@ -43,8 +43,34 @@ Give the output of the format template in json format
         if filter_by_value._query_df is None:
             filter_by_value._query_df = pd.read_csv('/code/CT_SEARCH_METHODS/hybrid_v1/FinalCTTrialsDF_P1_w_ContactInfo_LocList.csv')
 
-    def filter_by_cancer(self,cancer_type):
+    def filter_by_cancer(self, cancer_type):
         return self._query_df[self._query_df["CONDITIONS"].str.contains(cancer_type, case=False)]
+    
+    
+    def filter_by_zipcode(self, zipcode):
+        
+        # def zip_filter(location, zipcode):
+        #     for loc in location:
+        #         current_zip_code = loc.get('Location Zip')
+        #         if current_zip_code.startswith(zipcode):
+        #             distance = closest_zips.index(zip_code)
+        #         else:
+        #             distance = len(closest_zips)
+        #         distances.append((loc, distance))
+        #     sorted_locations = [loc for loc, _ in sorted(distances, key=lambda x: x[1])]
+        #     return sorted_locations
+        
+        
+        mask = self._query_df['LOCATIONS'].apply(lambda locations: any(location['Location Zip'].startswith(zipcode) for location in eval(locations) if location['Location Zip'] != None))
+        filtered_df = self._query_df[mask]
+        return filtered_df
+        # mask = self._query_df['LOCATIONS'].apply(lambda locations: any(location['Location Zip'].startswith(zipcode) for location in eval(locations)))
+        # for locs in self._query_df['LOCATIONS']:
+        #     for loc in location:
+        #     zip_code = loc.get('Location Zip')
+        # filtered_df = self._query_df[mask]
+        # return filtered_df
+        # return self._query_df[self._query_df["CONDITIONS"].str.contains(cancer_type, case=False)]
     
     # def filter_by_age(self,age_input):
     #     output = {"age_min" : "age",

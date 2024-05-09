@@ -216,9 +216,6 @@ Give the output of the format template in json format
         result_dict['location'] = response_dict
     
 
-    
-    
-
     def filter_by_stage(self,eligibility):
         output = {"stage" : "stage",
           "gender" : "gender" }

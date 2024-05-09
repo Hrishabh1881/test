@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-
+    'doris_schema',
     'corsheaders'
 ]
 
@@ -77,6 +77,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'POCClinicalTrial.wsgi.application'
+
+AUTH_USER_MODEL = 'doris_schema.DorisUser'
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
@@ -148,6 +150,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(os.path.dirname(BASE_DIR), "media/")
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+
 SESSION_CACHE_ALIAS = "default"
 
 gateways = netifaces.gateways()

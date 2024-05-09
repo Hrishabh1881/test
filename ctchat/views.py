@@ -10,6 +10,7 @@ from django.http import JsonResponse
 import openai 
 import json
 from utils.preprocessing import ct_preprocessing
+from django.core.cache import cache
 from utils.config import *
 from pandasai import SmartDataframe
 from pandasai.llm import OpenAI
@@ -127,9 +128,14 @@ class ClinicalTrialsLLMViewHybrid(CreateAPIView):
         
         
 class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
+    
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = (TokenAuthentication,)
     serializer_class = DorisChatSerializer
+    
     def post(self, request, *args, **kwargs):
         query = request.data.get('query', [])
+        
         payload = hybrid_v1_processor.ProcessQueryLocationList.process_query(query=query)
         
         if query:
@@ -143,15 +149,18 @@ class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
                     item.update(drugs_and_biomarkers)
                     del item['DRUGS_AND_BIOMARKERS']
                 
-                request.session['current_trial_data'] = json_payload_dict
-                print(request.session['current_trial_data'])
+                
+                cache.set(f'clinical_trials/{self.request.user.user_id}', json_payload_dict, timeout=180)
+                # request.session[session_key] = json_payload_dict
+
             return JsonResponse({'Message':json_payload_dict})
         else:
             return JsonResponse({'Message':{}})
         
         
     def get(self, request, *args, **kwargs):
-        payload = request.session.get('current_trial_data',[])
+        
+        payload = cache.get(f'clinical_trials/{self.request.user.user_id}')
         if payload:
             
             ##DRUGS & BIOMARKERS FOR POST QUERY FILTERING
@@ -206,8 +215,44 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
 
 class FilterClinicalTrialsDatabseView(APIView):
     
+    _instance = None  
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.Filter = filter_by_value()
+    
     def get(self, request, *args, **kwargs):
-        payload = dict(request.query_params)
-        return JsonResponse(dict(self.request.query_params))
+        filter_params = dict(request.query_params)
+        
+        
+        filtered_trials = []
+        
+        if 'condition_type' in filter_params.keys():
+            conditions = filter_params.get('condition_type',[])
+            for condition in conditions: 
+               results = self.Filter.filter_by_cancer(cancer_type=condition)
+               drop_cols = [col for col in results.columns if 'Unnamed' in col]
+               results.drop(columns=drop_cols, axis=1, inplace=True)
+               json_payload = pd.DataFrame(results, columns=results.columns).to_json(orient='records')
+               json_payload_dict = json.loads(json_payload)
+               filtered_trials.append(json_payload_dict)  
+               
+        if 'zipcode' in filter_params.keys():
+            zipcodes = filter_params.get('zipcode',[])
+            for zipcode in zipcodes:
+                zip_code_filter = self.Filter.filter_by_zipcode(zipcode=zipcode)
+                drop_cols = [col for col in zip_code_filter.columns if 'Unnamed' in col]
+                zip_code_filter.drop(columns=drop_cols, axis=1, inplace=True)
+                json_payload = pd.DataFrame(zip_code_filter, columns=zip_code_filter.columns).to_json(orient='records')
+                json_payload_dict = json.loads(json_payload)
+                filtered_trials.append(json_payload_dict)
+        
+        
+        return JsonResponse({'filtered_trials':filtered_trials})
         
         
