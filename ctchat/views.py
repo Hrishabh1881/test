@@ -141,10 +141,41 @@ class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
                     item.update(drugs_and_biomarkers)
                     del item['DRUGS_AND_BIOMARKERS']
                 
+                request.session['current_trial_data'] = json_payload_dict
+                print(request.session['current_trial_data'])
             return JsonResponse({'Message':json_payload_dict})
         else:
             return JsonResponse({'Message':{}})
         
+        
+    def get(self, request, *args, **kwargs):
+        payload = request.session.get('current_trial_data',[])
+        print(payload, 'get request')
+        if payload:
+            
+            ##DRUGS & BIOMARKERS FOR POST QUERY FILTERING
+            drugs = request.query_params.getlist('drugs', [])
+            biomarkers = request.query_params.getlist('biomarkers', [])
+            if drugs:
+                if len(drugs[0].split(',')) > 1:
+                    drugs = drugs[0].split(',')
+            if biomarkers:
+                if len(biomarkers[0].split(',')) > 1:
+                    biomarkers = biomarkers[0].split(',')
+            
+            if not drugs and not biomarkers:
+                return JsonResponse({'ClinicalTrials': payload})
+
+            filtered_trials = []
+            for trial in payload:
+                if any(drug in trial['DRUGS'] for drug in drugs) or any(biomarker in trial['BIOMARKERS'] for biomarker in biomarkers):
+                    filtered_trials.append(trial)
+        
+        
+        if filtered_trials:
+            return JsonResponse({'filtered_trials': filtered_trials})
+        else:
+            return JsonResponse({'message':'No trails match the filter parameters'}, status=200)
         
         
 class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
@@ -162,19 +193,19 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
                     json_payload_dict = {}
                 else:
                     json_payload = pd.DataFrame(payload, columns=payload.columns).to_json(orient='records')
-                    json_payload_dict = json.loads(json_payload)
-                    
+                    json_payload_dict = json.loads(json_payload)  
                 return JsonResponse({'Message':json_payload_dict})
             else:
                 return JsonResponse({'Message':{}})
         else:
             return JsonResponse({'Message':'Zip code not entered'})
         
+        
 
 class FilterClinicalTrials(APIView):
     
     def get(self, request, *args, **kwargs):
-        print(dict(self.request.query_params))
+        print(request.sessions.get(['current_trial_data'],{}))
         return JsonResponse(dict(self.request.query_params))
         
         
