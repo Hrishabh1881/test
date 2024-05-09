@@ -14,6 +14,7 @@ from utils.config import *
 from pandasai import SmartDataframe
 from pandasai.llm import OpenAI
 from utils.config import *
+from utils.filter import *
 
 from CT_SEARCH_METHODS.hybrid_v1 import hybrid_v1_processor
 os.environ['OPENAI_API_KEY'] = OPEN_API_KEY 
