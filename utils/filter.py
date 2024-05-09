@@ -46,29 +46,31 @@ Give the output of the format template in json format
     def filter_by_cancer(self,cancer_type):
         return self._query_df[self._query_df["CONDITIONS"].str.contains(cancer_type, case=False)]
     
-    def filter_by_age(self,age):
-        return self._query_df[self._query_df["AGE"] == age] 
+    # def filter_by_age(self,age_input):
+    #     output = {"age_min" : "age",
+    #       "age_max" : "age" }
+    #     system_prompt = f"""You are helpful assistant to max age and min age from given senetence and give output in json format as {output} """ 
+
+    #     response = openai.chat.completions.create(
+    #         model='gpt-4-0125-preview', 
+    #         temperature=0,
+    #         messages=[
+    #             {"role":"system", "content":system_prompt},
+    #             {"role":"user", "content":f""" Extract the max age and min age from given input 18 Years|75 Years|Adult|Older Adult and give output in {output} format. """},
+    #             {"role":"assistant", "content":"""{"age_min" : "18",
+    #       "age_max" : "75" }""" },
+    #       {"role":"user", "content":f""" Extract the max age and min age from given input {age_input} and give output in {output} format. """},
+    #         ],
+    #         max_tokens = 1024,
+    #         response_format={ "type": "json_object" }
+            
+    #     )  
+    #     res = response.choices[0].message.content
+    #     return res
     
   
 
-    def filter_by_stage(self,eligibility):
-        output = {"stage" : "stage",
-          "gender" : "gender" }
-        system_prompt = """You are helpful assistant to give stage of cancer and gender from given senetence and give output in json format as {output} """        
-        response = openai.chat.completions.create(
-            model='gpt-4-0125-preview', 
-            temperature=0,
-            messages=[
-                {"role":"system", "content":system_prompt},
-                {"role":"user", "content":f""" Extract the stage of cancer and gender from given input {eligibility} and give output in {output} format, stricrtly specify gender as male or female """},
-            ],
-            max_tokens = 1024,
-            response_format={ "type": "json_object" }
-            
-        )
-
-        res = response.choices[0].message.content
-        return res
+    
             
         
       
