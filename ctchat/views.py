@@ -14,6 +14,7 @@ from utils.config import *
 from pandasai import SmartDataframe
 from pandasai.llm import OpenAI
 from utils.config import *
+
 from CT_SEARCH_METHODS.hybrid_v1 import hybrid_v1_processor
 os.environ['OPENAI_API_KEY'] = OPEN_API_KEY 
 
@@ -205,7 +206,7 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
 class FilterClinicalTrialsDatabseView(APIView):
     
     def get(self, request, *args, **kwargs):
-        print(dict(request.query_params).get('condition_type'))
+        payload = dict(request.query_params)
         return JsonResponse(dict(self.request.query_params))
         
         
