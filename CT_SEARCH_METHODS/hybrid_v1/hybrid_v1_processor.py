@@ -214,6 +214,31 @@ Give the output of the format template in json format
         response = self.get_location(system_prompt=self.system_template, user_prompt=args)
         response_dict = json.loads(response)
         result_dict['location'] = response_dict
+    
+
+    def filter_by_cancer(self,cancer_type,df):
+        return df[df["CONDITIONS"].str.contains(cancer_type, case=False)]
+    
+
+    def filter_by_stage(self,eligibility):
+        output = {"stage" : "stage",
+          "gender" : "gender" }
+        system_prompt = """You are helpful assistant to give stage of cancer and gender from given senetence and give output in json format as {output} """        
+        response = openai.chat.completions.create(
+            model='gpt-4-0125-preview', 
+            temperature=0,
+            messages=[
+                {"role":"system", "content":system_prompt},
+                {"role":"user", "content":f""" Extract the stage of cancer and gender from given input {eligibility} and give output in {output} format, stricrtly specify gender as male or female """},
+            ],
+            max_tokens = 1024,
+            response_format={ "type": "json_object" }
+            
+        )
+
+        res = response.choices[0].message.content
+        return res
+    
         
         
         
