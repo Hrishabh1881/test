@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import *
 import os
 from rest_framework.generics import CreateAPIView, ListAPIView
+from rest_framework.views import APIView
 from django.http import JsonResponse
 import openai 
 import json
@@ -13,6 +14,8 @@ from utils.config import *
 from pandasai import SmartDataframe
 from pandasai.llm import OpenAI
 from utils.config import *
+from utils.filter import *
+
 from CT_SEARCH_METHODS.hybrid_v1 import hybrid_v1_processor
 os.environ['OPENAI_API_KEY'] = OPEN_API_KEY 
 
@@ -127,20 +130,55 @@ class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
     serializer_class = DorisChatSerializer
     def post(self, request, *args, **kwargs):
         query = request.data.get('query', [])
-        print(query)
         payload = hybrid_v1_processor.ProcessQueryLocationList.process_query(query=query)
+        
         if query:
             if payload.empty:
                 json_payload_dict = {}
             else:
                 json_payload = pd.DataFrame(payload, columns=payload.columns).to_json(orient='records')
                 json_payload_dict = json.loads(json_payload)
+                for item in json_payload_dict:
+                    drugs_and_biomarkers = json.loads(item['DRUGS_AND_BIOMARKERS'])
+                    item.update(drugs_and_biomarkers)
+                    del item['DRUGS_AND_BIOMARKERS']
                 
+                request.session['current_trial_data'] = json_payload_dict
+                print(request.session['current_trial_data'])
             return JsonResponse({'Message':json_payload_dict})
         else:
             return JsonResponse({'Message':{}})
         
         
+    def get(self, request, *args, **kwargs):
+        payload = request.session.get('current_trial_data',[])
+        if payload:
+            
+            ##DRUGS & BIOMARKERS FOR POST QUERY FILTERING
+            drugs = request.query_params.getlist('drugs', [])
+            biomarkers = request.query_params.getlist('biomarkers', [])
+            if drugs:
+                if len(drugs[0].split(',')) > 1:
+                    drugs = drugs[0].split(',')
+            if biomarkers:
+                if len(biomarkers[0].split(',')) > 1:
+                    biomarkers = biomarkers[0].split(',')
+            
+            ##ADD PARAMS HERE
+            if not drugs and not biomarkers:
+                return JsonResponse({'filtered_trials': payload})
+
+            filtered_trials = []
+            for trial in payload:
+                if any(drug in trial['DRUGS'] for drug in drugs) or any(biomarker in trial['BIOMARKERS'] for biomarker in biomarkers):
+                    filtered_trials.append(trial)
+        
+        
+            if filtered_trials:
+                return JsonResponse({'filtered_trials': filtered_trials}, status=200)
+            else:
+                return JsonResponse({'message':'No trails match the filter parameters'}, status=400)
+            
         
 class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
     
@@ -157,8 +195,7 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
                     json_payload_dict = {}
                 else:
                     json_payload = pd.DataFrame(payload, columns=payload.columns).to_json(orient='records')
-                    json_payload_dict = json.loads(json_payload)
-                    
+                    json_payload_dict = json.loads(json_payload)  
                 return JsonResponse({'Message':json_payload_dict})
             else:
                 return JsonResponse({'Message':{}})
@@ -166,5 +203,11 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
             return JsonResponse({'Message':'Zip code not entered'})
         
         
+
+class FilterClinicalTrialsDatabseView(APIView):
+    
+    def get(self, request, *args, **kwargs):
+        payload = dict(request.query_params)
+        return JsonResponse(dict(self.request.query_params))
         
         

@@ -130,7 +130,7 @@ class ProcessQueryLocationList():
     _instance = None
     _lock = Lock()
     _query_df = None
-    system_template = f'''Give the names of any location such as city, state, country from the provided sentence in the specified format:
+    system_template = f'''Give the names of any location such as city, state, country from the provided sentence in the specified format. If only a state is given, return the city as the capital of the state.:
 ---BEGIN FORMAT TEMPLATE---
 {{"CITY":"city"
 "STATE":"state of the city"
@@ -138,6 +138,17 @@ class ProcessQueryLocationList():
 ---END FORMAT TEMPLATE---
 Give the output of the format template in json format
 '''
+
+    drugs_biomarkers_template=f'''
+    Please extract all the names of the drugs and biomarkers from the information provided
+    ---BEGIN FORMAT TEMPLATE---
+{{"DRUGS":"list of name of the drugs"
+"BIOMARKERS":"list of name of the biomarker"}}
+---END FORMAT TEMPLATE---
+Give the output of the format template in json format
+    '''
+
+
     
     def __new__(cls, *args, **kwargs):
         with cls._lock:
@@ -170,6 +181,21 @@ Give the output of the format template in json format
         
         
     def get_location(self, system_prompt, user_prompt, model='gpt-4-0125-preview', temperature=0, verbose=False):
+        response = openai.chat.completions.create(
+            model=model, 
+            temperature=temperature,
+            messages=[
+                {"role":"system", "content":system_prompt},
+                {"role":"user", "content":str(user_prompt)},
+            ],
+            max_tokens = 1024,
+            response_format={ "type": "json_object" }
+            
+        )
+        res = response.choices[0].message.content
+        return res
+    
+    def get_drugs_biomarkers(self, system_prompt, user_prompt, model='gpt-4-0125-preview', temperature=0, verbose=False):
         response = openai.chat.completions.create(
             model=model, 
             temperature=temperature,
@@ -218,15 +244,16 @@ Give the output of the format template in json format
     def get_closest_by_city(self, city):
         distances = []
         search_engine = SearchEngine()
-        city_info = search_engine.by_city(city)[0]
-        center_lat, center_lon = city_info.lat, city_info.lng
-        nearby_zip_codes = search_engine.by_coordinates(center_lat, center_lon, returns=0)
-        for zip_instance in nearby_zip_codes:
-            if zip_instance.lat and zip_instance.lng:
-                distance = geodesic((center_lat, center_lon), (zip_instance.lat, zip_instance.lng)).miles
-                distances.append((zip_instance.zipcode, distance))
-        closest_zip_codes = [(item[0], round(item[1], 2)) for item in sorted(distances, key=lambda x: x[1])]
-        return closest_zip_codes  
+        if len(list(search_engine.by_city(city))) > 0:
+            city_info = search_engine.by_city(city)[0]
+            center_lat, center_lon = city_info.lat, city_info.lng
+            nearby_zip_codes = search_engine.by_coordinates(center_lat, center_lon, returns=0)
+            for zip_instance in nearby_zip_codes:
+                if zip_instance.lat and zip_instance.lng:
+                    distance = geodesic((center_lat, center_lon), (zip_instance.lat, zip_instance.lng)).miles
+                    distances.append((zip_instance.zipcode, distance))
+            closest_zip_codes = [(item[0], round(item[1], 2)) for item in sorted(distances, key=lambda x: x[1])]
+            return closest_zip_codes  
     
     
     def custom_geo_sort(location, closest_zips):
@@ -268,6 +295,9 @@ Give the output of the format template in json format
 
         distilled_df = distilled_df.sort_values(by='score', ascending=False)
         
+        drop_cols = [col for col in distilled_df.columns if 'Unnamed' in col]
+        distilled_df.drop(columns=drop_cols, axis=1, inplace=True)
+        
         filtered_df = pd.DataFrame()
         
 
@@ -277,15 +307,14 @@ Give the output of the format template in json format
                     or (result_dict['location']['STATE'] == location.get('Location State')) \
                     or (result_dict['location']['COUNTRY'] == location.get('Location Country')):
                     filtered_df = filtered_df.append(row, ignore_index=True)
-                    print('Yes')
                     break
-        
-        
+        # drugs = cls().get_drugs_biomarkers(user_prompt=filtered_df['STUDY_TITLE'], system_prompt=cls().drugs_biomarkers_template)
+        # print(drugs)
+        dnb_result = filtered_df['STUDY_TITLE'].apply(lambda row: cls().get_drugs_biomarkers(user_prompt=row, system_prompt=cls().drugs_biomarkers_template))
+        filtered_df['DRUGS_AND_BIOMARKERS'] = dnb_result; filtered_df['DRUGS_AND_BIOMARKERS'].apply(lambda content: eval(content))
         sorted_df_for_location_distance = filtered_df.copy()    
         sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.custom_geo_sort(eval(x), closest_zip_codes))
-        sorted_df_for_location_distance['POINT_OF_CONTACT'] = sorted_df_for_location_distance['POINT_OF_CONTACT'].apply(lambda x: eval(x)) 
-        sorted_df_for_location_distance['ELIGIBILITY_CRITERIA'] = sorted_df_for_location_distance['ELIGIBILITY_CRITERIA'].apply(lambda x: x.split('. ')) 
-        sorted_df_for_location_distance['INTERVENTIONS'] = sorted_df_for_location_distance['INTERVENTIONS'].apply(lambda x: x.split('. ')) 
+        
         
         
         return sorted_df_for_location_distance
