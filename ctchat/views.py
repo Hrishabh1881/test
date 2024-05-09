@@ -150,7 +150,6 @@ class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
         
     def get(self, request, *args, **kwargs):
         payload = request.session.get('current_trial_data',[])
-        print(payload, 'get request')
         if payload:
             
             ##DRUGS & BIOMARKERS FOR POST QUERY FILTERING
@@ -163,6 +162,7 @@ class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
                 if len(biomarkers[0].split(',')) > 1:
                     biomarkers = biomarkers[0].split(',')
             
+            ##ADD PARAMS HERE
             if not drugs and not biomarkers:
                 return JsonResponse({'ClinicalTrials': payload})
 
@@ -172,11 +172,11 @@ class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
                     filtered_trials.append(trial)
         
         
-        if filtered_trials:
-            return JsonResponse({'filtered_trials': filtered_trials})
-        else:
-            return JsonResponse({'message':'No trails match the filter parameters'}, status=200)
-        
+            if filtered_trials:
+                return JsonResponse({'filtered_trials': filtered_trials})
+            else:
+                return JsonResponse({'message':'No trails match the filter parameters'}, status=400)
+            
         
 class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
     
