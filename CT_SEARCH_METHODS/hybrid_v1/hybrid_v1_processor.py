@@ -421,7 +421,9 @@ Give the output of the format template in json format
 
         print(result_dict)
 
-        distilled_df = distilled_df.sort_values(by='score', ascending=False)        
+        distilled_df = distilled_df.sort_values(by='score', ascending=False)      
+        drop_cols = [col for col in distilled_df.columns if 'Unnamed' in col]
+        distilled_df.drop(columns=drop_cols, axis=1, inplace=True)  
         # distilled_df = distilled_df.dropna(subset=['ZIP'])
         
         filtered_df = pd.DataFrame()
