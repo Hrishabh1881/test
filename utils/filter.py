@@ -54,6 +54,13 @@ Give the output of the format template in json format
         return filtered_df
     
     
+    def filter_current_by_zipcode(self, df, zipcode):
+        # df['LOCATIONS'].apply(lambda locations: any(location['Location Zip'].startswith(zipcode) for location in eval(locations) if location['Location Zip'] != None))
+        mask = df['LOCATIONS'].apply(lambda locations: any(location['Location Zip'].startswith(zipcode) for location in locations if location['Location Zip'] != None))
+        filtered_df = df[mask]
+        return filtered_df
+    
+    
     def filter_by_nct_number(self, nct_number):
         df = self._query_df
         print(df['NCT_NUMBER'])

@@ -160,12 +160,33 @@ class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
         
     def get(self, request, *args, **kwargs):
         
-        payload = cache.get(f'clinical_trials/{self.request.user.user_id}')
-        if payload:
+        
+        def dict_to_tuple(d):
+            if isinstance(d, dict):
+                return tuple((k, dict_to_tuple(v)) for k, v in sorted(d.items()))
+            elif isinstance(d, list):
+                return tuple(sorted([dict_to_tuple(item) for item in d]))
+            else:
+                return d
             
+        def convert_to_hashable(value):
+                if isinstance(value, list):
+                    return tuple(value)
+        
+        
+        
+        payload = cache.get(f'clinical_trials/{self.request.user.user_id}')
+        payload_df = pd.DataFrame(payload)
+        
+        
+              
+        if payload:
             ##DRUGS & BIOMARKERS FOR POST QUERY FILTERING
             drugs = request.query_params.getlist('drugs', [])
             biomarkers = request.query_params.getlist('biomarkers', [])
+            zip_code = request.query_params.get('zip_code')
+            print(zip_code)
+            
             if drugs:
                 if len(drugs[0].split(',')) > 1:
                     drugs = drugs[0].split(',')
@@ -174,21 +195,37 @@ class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
                     biomarkers = biomarkers[0].split(',')
             
             ##ADD PARAMS HERE
-            if not drugs and not biomarkers:
+            if not drugs and not biomarkers and not zip_code:
                 return JsonResponse({'filtered_trials': payload})
 
             filtered_trials = []
             for trial in payload:
                 if any(drug in trial['DRUGS'] for drug in drugs) or any(biomarker in trial['BIOMARKERS'] for biomarker in biomarkers):
                     filtered_trials.append(trial)
+                    
+            if zip_code:
+                filter = filter_by_value()
+                zip_filtered_trials = filter.filter_current_by_zipcode(df=payload_df, zipcode=zip_code)
+                drop_cols = [col for col in zip_filtered_trials.columns if 'Unnamed' in col]
+                zip_filtered_trials.drop(columns=drop_cols, axis=1, inplace=True)
+                json_payload = pd.DataFrame(zip_filtered_trials, columns=zip_filtered_trials.columns).to_json(orient='records')
+                json_payload_dict = json.loads(json_payload)
+                filtered_trials.append(json_payload_dict)
         
         
             if filtered_trials:
+                # # unique_dicts = {tuple((k, convert_to_hashable(v)) for k, v in d.items()) for d in filtered_trials}
+                # # filtered_trials = [dict((k, list(v)) if isinstance(v, tuple) else (k, v) for k, v in items) for items in unique_dicts]
+                # # unique_dicts = [dict(t) for t in {dict_to_tuple(d) for d in filtered_trials}]
+                # unique_tuples = {dict_to_tuple(d) for d in filtered_trials}
+                # print(unique_tuples)
+                # unique_dicts = [dict(t) for t in unique_tuples]
                 return JsonResponse({'filtered_trials': filtered_trials}, status=200)
             else:
-                return JsonResponse({'message':'No trails match the filter parameters'}, status=400)
-            
+                return JsonResponse({'message':'No trails match the filter parameters', 'filtered_trials':payload}, status=400)
         
+        
+
 class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
     
     serializer_class = DorisChatSerializer
@@ -211,6 +248,8 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
         else:
             return JsonResponse({'Message':'Zip code not entered'})
         
+
+
 class GetClinicalTrialDetailsView(APIView):
     _instance = None  
 
