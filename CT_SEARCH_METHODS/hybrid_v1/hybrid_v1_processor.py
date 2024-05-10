@@ -258,7 +258,7 @@ Give the output of the format template in json format
                     print('Yes')
                     break
         
-        
+        print(filtered_df)
         sorted_df_for_location_distance = filtered_df.copy()
         print(sorted_df_for_location_distance.columns)    
         sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.custom_geo_sort(eval(x), closest_zip_codes))
