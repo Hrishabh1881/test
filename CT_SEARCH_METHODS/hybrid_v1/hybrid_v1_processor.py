@@ -249,6 +249,9 @@ Give the output of the format template in json format
 
         distilled_df = distilled_df.sort_values(by='score', ascending=False)
         
+        drop_cols = [col for col in distilled_df.columns if 'Unnamed' in col]
+        distilled_df.drop(columns=drop_cols, axis=1, inplace=True) 
+        
         filtered_df = pd.DataFrame()
         
 
