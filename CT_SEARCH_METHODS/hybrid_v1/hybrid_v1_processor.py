@@ -229,11 +229,13 @@ Give the output of the format template in json format
         smart_df_thread.join()
         query_df = cls._query_df 
         
+        
+        print(query_df)
+        
         print(result_dict['location']['CITY'])
 
         closest_zip_codes_w_distance = cls().get_closest_by_city(city=result_dict['location']['CITY'])
         closest_zip_codes = [item[0] for item in closest_zip_codes_w_distance]
-        print(closest_zip_codes)
         
         scores_df = pd.DataFrame.from_dict(result_dict['vector_db_scores_dict'], orient='index', columns=['score'])
         scores_df.reset_index(inplace=True)
