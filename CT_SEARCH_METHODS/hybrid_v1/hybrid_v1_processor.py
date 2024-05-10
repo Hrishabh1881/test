@@ -164,6 +164,7 @@ Give the output of the format template in json format
     
     def search_vector_db(self, args, result_dict):
         vector_db = self.vector_database
+        print(args)
         result = vector_db.similarity_search_with_relevance_scores(args)
         print(result, 'results from db')
         nct_score_dict = self.get_nct_scores(result)
