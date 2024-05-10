@@ -164,6 +164,7 @@ Give the output of the format template in json format
     def search_vector_db(self, args, result_dict):
         vector_db = self.vector_database
         result = vector_db.similarity_search_with_relevance_scores(args)
+        print(result, 'results from db')
         nct_score_dict = self.get_nct_scores(result)
         result_dict['vector_db_scores_dict'] = nct_score_dict
         result_dict['vector_db_nct_numbers'] = list(nct_score_dict.keys())
@@ -260,7 +261,6 @@ Give the output of the format template in json format
         
         print(filtered_df, 'Here')
         sorted_df_for_location_distance = filtered_df.copy()
-        print(sorted_df_for_location_distance.columns)    
         sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.custom_geo_sort(eval(x), closest_zip_codes))
         sorted_df_for_location_distance['POINT_OF_CONTACT'] = sorted_df_for_location_distance['POINT_OF_CONTACT'].apply(lambda x: eval(x)) 
         sorted_df_for_location_distance['ELIGIBILITY_CRITERIA'] = sorted_df_for_location_distance['ELIGIBILITY_CRITERIA'].apply(lambda x: x.split('. ')) 
