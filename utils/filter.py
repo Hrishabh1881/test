@@ -49,21 +49,16 @@ Give the output of the format template in json format
     
     def filter_by_zipcode(self, zipcode):
         
-        # def zip_filter(location, zipcode):
-        #     for loc in location:
-        #         current_zip_code = loc.get('Location Zip')
-        #         if current_zip_code.startswith(zipcode):
-        #             distance = closest_zips.index(zip_code)
-        #         else:
-        #             distance = len(closest_zips)
-        #         distances.append((loc, distance))
-        #     sorted_locations = [loc for loc, _ in sorted(distances, key=lambda x: x[1])]
-        #     return sorted_locations
-        
-        
         mask = self._query_df['LOCATIONS'].apply(lambda locations: any(location['Location Zip'].startswith(zipcode) for location in eval(locations) if location['Location Zip'] != None))
         filtered_df = self._query_df[mask]
         return filtered_df
+    
+    
+    def filter_by_nct_number(self, nct_number):
+        df = self._query_df
+        print(df['NCT_NUMBER'])
+        nct_filter = df[df['NCT_NUMBER'] == nct_number[0]]
+        return nct_filter
         # mask = self._query_df['LOCATIONS'].apply(lambda locations: any(location['Location Zip'].startswith(zipcode) for location in eval(locations)))
         # for locs in self._query_df['LOCATIONS']:
         #     for loc in location:

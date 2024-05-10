@@ -8,4 +8,5 @@ urlpatterns = [
     path('clinicaltrialsinfo2', ClinicalTrialsLLMViewHybrid.as_view(), name='clinical-trial-info-hybrid'),
     path('clinicaltrialsinfo3', ClinicalTrialsLLMViewHybridLocationList.as_view(), name='clinical-trial-location-list'),
     path('clinicaltrialwithzip', ClinicalTrialsLLMViewHybridZipLocator.as_view(), name='clinical-trial-zip'),
-    path('filtertrials', FilterClinicalTrialsDatabseView.as_view(), name='directfilter')]
+    path('filtertrials', FilterClinicalTrialsDatabseView.as_view(), name='directfilter'),
+    path('clinicaltrialsdetails', GetClinicalTrialDetailsView.as_view(), name='detailsview')]

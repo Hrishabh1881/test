@@ -211,7 +211,34 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
         else:
             return JsonResponse({'Message':'Zip code not entered'})
         
-        
+class GetClinicalTrialDetailsView(APIView):
+    _instance = None  
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.Filter = filter_by_value()
+    
+    def get(self, request, *args, **kwargs):
+        filter_params = dict(request.query_params) 
+        nct_number = filter_params.get('nct_number', [])
+        if nct_number:
+            payload = self.Filter.filter_by_nct_number(nct_number=nct_number)
+            if not payload.empty:
+                drop_cols = [col for col in payload.columns if 'Unnamed' in col]
+                payload.drop(columns=drop_cols, axis=1, inplace=True)
+                json_payload = pd.DataFrame(payload, columns=payload.columns).to_json(orient='records')
+                json_payload_dict = json.loads(json_payload)
+                return JsonResponse({'filtered_trials':json_payload_dict}, status=200)
+            else:
+                return  JsonResponse({'message':f'Information about trial {nct_number[0]} currently unavailable'}, status=400)
+            
+            
+              
 
 class FilterClinicalTrialsDatabseView(APIView):
     
@@ -231,6 +258,7 @@ class FilterClinicalTrialsDatabseView(APIView):
         
         
         filtered_trials = []
+                
         
         if 'condition_type' in filter_params.keys():
             conditions = filter_params.get('condition_type',[])
@@ -251,7 +279,6 @@ class FilterClinicalTrialsDatabseView(APIView):
                 json_payload = pd.DataFrame(zip_code_filter, columns=zip_code_filter.columns).to_json(orient='records')
                 json_payload_dict = json.loads(json_payload)
                 filtered_trials.append(json_payload_dict)
-        
         
         return JsonResponse({'filtered_trials':filtered_trials})
         
