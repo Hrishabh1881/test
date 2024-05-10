@@ -149,6 +149,7 @@ Give the output of the format template in json format
     
     def _initialize_vector_db(self):
         self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_01', embedding_function=OpenAIEmbeddings())
+        print(self.vector_database)
         
     def _initialize_query_df(self):
         if ProcessQueryLocationList._query_df is None:
