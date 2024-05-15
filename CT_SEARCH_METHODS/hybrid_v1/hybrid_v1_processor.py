@@ -279,7 +279,6 @@ Give the output of the format template in json format
         smart_df_thread.join()
         query_df = cls._query_df 
         
-        print(query_df.columns)
         
         if result_dict['location']['CITY']:
 
@@ -340,6 +339,7 @@ Give the output of the format template in json format
             sorted_df_for_location_distance['PHASES'] = sorted_df_for_location_distance['PHASES'].apply(lambda element: eval(element) if isinstance(element, str) else element)
             sorted_df_for_location_distance['CONDITIONS'] = sorted_df_for_location_distance['CONDITIONS'].apply(lambda element: eval(element))   
             sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda element: eval(element) if isinstance(element, str) else element)
+            sorted_df_for_location_distance['POINT_OF_CONTACT'] = sorted_df_for_location_distance['POINT_OF_CONTACT'].apply(lambda element: eval(element) if isinstance(element, str) else element)
             return sorted_df_for_location_distance
     
     

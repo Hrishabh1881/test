@@ -36,12 +36,12 @@ Give the output of the format template in json format
     
     
     def _initialize_vector_db(self):
-        self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_01', embedding_function=OpenAIEmbeddings())
+        self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_02_ALPHA', embedding_function=OpenAIEmbeddings())
         
     
     def _initialize_query_df(self):
         if filter_by_value._query_df is None:
-            filter_by_value._query_df = pd.read_csv('/code/CT_SEARCH_METHODS/hybrid_v1/FinalCTTrialsDF_P1_w_ContactInfo_LocList.csv')
+            filter_by_value._query_df = pd.read_csv('/code/ct_csv/CT_CSV_15_05.csv')
 
     def filter_by_cancer(self, cancer_type):
         return self._query_df[self._query_df["CONDITIONS"].str.contains(cancer_type, case=False)]
