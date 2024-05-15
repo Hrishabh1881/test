@@ -159,12 +159,14 @@ Give the output of the format template in json format
         return cls._instance
     
     def _initialize_vector_db(self):
-        self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_01', embedding_function=OpenAIEmbeddings())
+        self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_02_ALPHA', embedding_function=OpenAIEmbeddings())
         
+    
     def _initialize_query_df(self):
         if ProcessQueryLocationList._query_df is None:
-            ProcessQueryLocationList._query_df = pd.read_csv('/code/CT_SEARCH_METHODS/hybrid_v1/FinalCTTrialsDF_P1_w_ContactInfo_LocList.csv')
-    
+            ProcessQueryLocationList._query_df = pd.read_csv('/code/ct_csv/CT_CSV_15_05.csv')
+            
+            
     def get_nct_scores(self, docs:list) -> dict:
         ct_score_dict = {}
         for doc in docs:
@@ -277,7 +279,7 @@ Give the output of the format template in json format
         smart_df_thread.join()
         query_df = cls._query_df 
         
-        print(result_dict)
+        print(query_df.columns)
         
         if result_dict['location']['CITY']:
 
@@ -286,6 +288,7 @@ Give the output of the format template in json format
             print(closest_zip_codes)
             
             scores_df = pd.DataFrame.from_dict(result_dict['vector_db_scores_dict'], orient='index', columns=['score'])
+            print(scores_df)
             scores_df.reset_index(inplace=True)
             scores_df.columns = ['NCT_NUMBER', 'score']
             
@@ -304,7 +307,7 @@ Give the output of the format template in json format
                 for location in eval(row['LOCATIONS']):
                     if (result_dict['location']['CITY'] == location.get('Location City')) \
                         or (result_dict['location']['STATE'] == location.get('Location State')) \
-                        or (result_dict['location']['COUNTRY'] == location.get('Location Country')):
+                        or ('United States' == location.get('Location Country')):
                         filtered_df = filtered_df.append(row, ignore_index=True)
                         break
             # drugs = cls().get_drugs_biomarkers(user_prompt=filtered_df['STUDY_TITLE'], system_prompt=cls().drugs_biomarkers_template)
@@ -314,6 +317,9 @@ Give the output of the format template in json format
                 filtered_df['DRUGS_AND_BIOMARKERS'] = dnb_result; filtered_df['DRUGS_AND_BIOMARKERS'].apply(lambda content: eval(content))
                 sorted_df_for_location_distance = filtered_df.copy()    
                 sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.custom_geo_sort(eval(x), closest_zip_codes))
+                sorted_df_for_location_distance['PHASES'] = sorted_df_for_location_distance['PHASES'].apply(lambda element: eval(element) if isinstance(element, str) else element)
+                sorted_df_for_location_distance['CONDITIONS'] = sorted_df_for_location_distance['CONDITIONS'].apply(lambda element: eval(element) if isinstance(element, str) else element)
+                sorted_df_for_location_distance['POINT_OF_CONTACT'] = sorted_df_for_location_distance['POINT_OF_CONTACT'].apply(lambda element: eval(element) if isinstance(element, str) else element)
                 
                 return sorted_df_for_location_distance
             else:
@@ -330,7 +336,10 @@ Give the output of the format template in json format
             distilled_df.drop(columns=drop_cols, axis=1, inplace=True)
             dnb_result = distilled_df['INTERVENTIONS'].apply(lambda row: cls().get_drugs_biomarkers(user_prompt=row, system_prompt=cls().drugs_biomarkers_template))
             distilled_df['DRUGS_AND_BIOMARKERS'] = dnb_result; distilled_df['DRUGS_AND_BIOMARKERS'].apply(lambda content: eval(content))
-            sorted_df_for_location_distance = distilled_df.copy()    
+            sorted_df_for_location_distance = distilled_df.copy() 
+            sorted_df_for_location_distance['PHASES'] = sorted_df_for_location_distance['PHASES'].apply(lambda element: eval(element) if isinstance(element, str) else element)
+            sorted_df_for_location_distance['CONDITIONS'] = sorted_df_for_location_distance['CONDITIONS'].apply(lambda element: eval(element))   
+            sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda element: eval(element) if isinstance(element, str) else element)
             return sorted_df_for_location_distance
     
     
@@ -363,12 +372,12 @@ Give the output of the format template in json format
     
     
     def _initialize_vector_db(self):
-        self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_01', embedding_function=OpenAIEmbeddings())
+        self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_02_ALPHA', embedding_function=OpenAIEmbeddings())
         
     
     def _initialize_query_df(self):
         if ProcessQueryZipLocator._query_df is None:
-            ProcessQueryZipLocator._query_df = pd.read_csv('/code/CT_SEARCH_METHODS/hybrid_v1/FinalCTTrialsDF_P1_w_ContactInfo_LocList.csv')
+            ProcessQueryZipLocator._query_df = pd.read_csv('/code/ct_csv/CT_CSV_15_05.csv')
             
     
     def get_closest_zip_codes(self, zip_code:int, num_closest:int=500, radius=100):
@@ -460,6 +469,7 @@ Give the output of the format template in json format
         vectordb_thread.join()
         smart_df_thread.join()
         query_df = cls._query_df 
+        
         
         
         closest_zip_codes_w_distance = cls().get_closest_zip_codes(zip_code=zip_code)

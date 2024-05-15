@@ -352,5 +352,6 @@ class FilterClinicalTrialsDatabseView(APIView):
                 filtered_trials.append(json_payload_dict)
         
         return JsonResponse({'filtered_trials':filtered_trials})
+    
         
         
