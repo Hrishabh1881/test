@@ -277,44 +277,58 @@ Give the output of the format template in json format
         smart_df_thread.join()
         query_df = cls._query_df 
         
-        print(result_dict['location']['CITY'])
+        print(result_dict)
+        
+        if result_dict['location']['CITY']:
 
-        closest_zip_codes_w_distance = cls().get_closest_by_city(city=result_dict['location']['CITY'])
-        closest_zip_codes = [item[0] for item in closest_zip_codes_w_distance]
-        print(closest_zip_codes)
-        
-        scores_df = pd.DataFrame.from_dict(result_dict['vector_db_scores_dict'], orient='index', columns=['score'])
-        scores_df.reset_index(inplace=True)
-        scores_df.columns = ['NCT_NUMBER', 'score']
-        
-        distilled_df = query_df[query_df['NCT_NUMBER'].isin(result_dict['vector_db_nct_numbers'])]
-        distilled_df = pd.merge(distilled_df, scores_df, on='NCT_NUMBER')
+            closest_zip_codes_w_distance = cls().get_closest_by_city(city=result_dict['location']['CITY'])
+            closest_zip_codes = [item[0] for item in closest_zip_codes_w_distance]
+            print(closest_zip_codes)
+            
+            scores_df = pd.DataFrame.from_dict(result_dict['vector_db_scores_dict'], orient='index', columns=['score'])
+            scores_df.reset_index(inplace=True)
+            scores_df.columns = ['NCT_NUMBER', 'score']
+            
+            distilled_df = query_df[query_df['NCT_NUMBER'].isin(result_dict['vector_db_nct_numbers'])]
+            distilled_df = pd.merge(distilled_df, scores_df, on='NCT_NUMBER')
 
-        distilled_df = distilled_df.sort_values(by='score', ascending=False)
-        
-        drop_cols = [col for col in distilled_df.columns if 'Unnamed' in col]
-        distilled_df.drop(columns=drop_cols, axis=1, inplace=True)
-        
-        filtered_df = pd.DataFrame()
-        
+            distilled_df = distilled_df.sort_values(by='score', ascending=False)
+            
+            drop_cols = [col for col in distilled_df.columns if 'Unnamed' in col]
+            distilled_df.drop(columns=drop_cols, axis=1, inplace=True)
+            
+            filtered_df = pd.DataFrame()
+            
 
-        for index, row in distilled_df.iterrows():
-            for location in eval(row['LOCATIONS']):
-                if (result_dict['location']['CITY'] == location.get('Location City')) \
-                    or (result_dict['location']['STATE'] == location.get('Location State')) \
-                    or (result_dict['location']['COUNTRY'] == location.get('Location Country')):
-                    filtered_df = filtered_df.append(row, ignore_index=True)
-                    break
-        # drugs = cls().get_drugs_biomarkers(user_prompt=filtered_df['STUDY_TITLE'], system_prompt=cls().drugs_biomarkers_template)
-        # print(drugs)
-        dnb_result = filtered_df['STUDY_TITLE'].apply(lambda row: cls().get_drugs_biomarkers(user_prompt=row, system_prompt=cls().drugs_biomarkers_template))
-        filtered_df['DRUGS_AND_BIOMARKERS'] = dnb_result; filtered_df['DRUGS_AND_BIOMARKERS'].apply(lambda content: eval(content))
-        sorted_df_for_location_distance = filtered_df.copy()    
-        sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.custom_geo_sort(eval(x), closest_zip_codes))
+            for index, row in distilled_df.iterrows():
+                for location in eval(row['LOCATIONS']):
+                    if (result_dict['location']['CITY'] == location.get('Location City')) \
+                        or (result_dict['location']['STATE'] == location.get('Location State')) \
+                        or (result_dict['location']['COUNTRY'] == location.get('Location Country')):
+                        filtered_df = filtered_df.append(row, ignore_index=True)
+                        break
+            # drugs = cls().get_drugs_biomarkers(user_prompt=filtered_df['STUDY_TITLE'], system_prompt=cls().drugs_biomarkers_template)
+            # print(drugs)
+            dnb_result = filtered_df['INTERVENTIONS'].apply(lambda row: cls().get_drugs_biomarkers(user_prompt=row, system_prompt=cls().drugs_biomarkers_template))
+            filtered_df['DRUGS_AND_BIOMARKERS'] = dnb_result; filtered_df['DRUGS_AND_BIOMARKERS'].apply(lambda content: eval(content))
+            sorted_df_for_location_distance = filtered_df.copy()    
+            sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.custom_geo_sort(eval(x), closest_zip_codes))
+            
+            return sorted_df_for_location_distance
         
-        
-        
-        return sorted_df_for_location_distance
+        else:
+            scores_df = pd.DataFrame.from_dict(result_dict['vector_db_scores_dict'], orient='index', columns=['score'])
+            scores_df.reset_index(inplace=True)
+            scores_df.columns = ['NCT_NUMBER', 'score']
+            distilled_df = query_df[query_df['NCT_NUMBER'].isin(result_dict['vector_db_nct_numbers'])]
+            distilled_df = pd.merge(distilled_df, scores_df, on='NCT_NUMBER')
+            distilled_df = distilled_df.sort_values(by='score', ascending=False)
+            drop_cols = [col for col in distilled_df.columns if 'Unnamed' in col]
+            distilled_df.drop(columns=drop_cols, axis=1, inplace=True)
+            dnb_result = distilled_df['INTERVENTIONS'].apply(lambda row: cls().get_drugs_biomarkers(user_prompt=row, system_prompt=cls().drugs_biomarkers_template))
+            distilled_df['DRUGS_AND_BIOMARKERS'] = dnb_result; distilled_df['DRUGS_AND_BIOMARKERS'].apply(lambda content: eval(content))
+            sorted_df_for_location_distance = distilled_df.copy()    
+            return sorted_df_for_location_distance
     
     
     def __init__(self):

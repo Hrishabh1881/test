@@ -261,6 +261,32 @@ class GetClinicalTrialDetailsView(APIView):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.Filter = filter_by_value()
+        
+        
+        
+    def get_drugs_biomarkers(self, user_prompt, model='gpt-4-0125-preview', temperature=0, verbose=False):
+        
+        system_prompt=f'''
+    Please extract all the names of the drugs and biomarkers from the information provided
+    ---BEGIN FORMAT TEMPLATE---
+{{"DRUGS":"list of name of the drugs"
+"BIOMARKERS":"list of name of the biomarker"}}
+---END FORMAT TEMPLATE---
+Give the output of the format template in json format
+    '''
+        response = openai.chat.completions.create(
+            model=model, 
+            temperature=temperature,
+            messages=[
+                {"role":"system", "content":system_prompt},
+                {"role":"user", "content":str(user_prompt)},
+            ],
+            max_tokens = 1024,
+            response_format={ "type": "json_object" }
+            
+        )
+        res = response.choices[0].message.content
+        return res
     
     def get(self, request, *args, **kwargs):
         filter_params = dict(request.query_params) 
@@ -270,8 +296,14 @@ class GetClinicalTrialDetailsView(APIView):
             if not payload.empty:
                 drop_cols = [col for col in payload.columns if 'Unnamed' in col]
                 payload.drop(columns=drop_cols, axis=1, inplace=True)
+                dnb_result = payload['INTERVENTIONS'].apply(lambda row: self.get_drugs_biomarkers(user_prompt=row))
+                payload['DRUGS_AND_BIOMARKERS'] = dnb_result; payload['DRUGS_AND_BIOMARKERS'].apply(lambda content: eval(content))
                 json_payload = pd.DataFrame(payload, columns=payload.columns).to_json(orient='records')
                 json_payload_dict = json.loads(json_payload)
+                for item in json_payload_dict:
+                    drugs_and_biomarkers = json.loads(item['DRUGS_AND_BIOMARKERS'])
+                    item.update(drugs_and_biomarkers)
+                    del item['DRUGS_AND_BIOMARKERS']
                 return JsonResponse({'filtered_trials':json_payload_dict}, status=200)
             else:
                 return  JsonResponse({'message':f'Information about trial {nct_number[0]} currently unavailable'}, status=400)
