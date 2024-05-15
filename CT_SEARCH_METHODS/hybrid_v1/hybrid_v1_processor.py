@@ -309,12 +309,15 @@ Give the output of the format template in json format
                         break
             # drugs = cls().get_drugs_biomarkers(user_prompt=filtered_df['STUDY_TITLE'], system_prompt=cls().drugs_biomarkers_template)
             # print(drugs)
-            dnb_result = filtered_df['INTERVENTIONS'].apply(lambda row: cls().get_drugs_biomarkers(user_prompt=row, system_prompt=cls().drugs_biomarkers_template))
-            filtered_df['DRUGS_AND_BIOMARKERS'] = dnb_result; filtered_df['DRUGS_AND_BIOMARKERS'].apply(lambda content: eval(content))
-            sorted_df_for_location_distance = filtered_df.copy()    
-            sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.custom_geo_sort(eval(x), closest_zip_codes))
-            
-            return sorted_df_for_location_distance
+            if not filtered_df.empty:
+                dnb_result = filtered_df['INTERVENTIONS'].apply(lambda row: cls().get_drugs_biomarkers(user_prompt=row, system_prompt=cls().drugs_biomarkers_template))
+                filtered_df['DRUGS_AND_BIOMARKERS'] = dnb_result; filtered_df['DRUGS_AND_BIOMARKERS'].apply(lambda content: eval(content))
+                sorted_df_for_location_distance = filtered_df.copy()    
+                sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.custom_geo_sort(eval(x), closest_zip_codes))
+                
+                return sorted_df_for_location_distance
+            else:
+                return filtered_df
         
         else:
             scores_df = pd.DataFrame.from_dict(result_dict['vector_db_scores_dict'], orient='index', columns=['score'])
