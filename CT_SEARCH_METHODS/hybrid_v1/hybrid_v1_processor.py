@@ -176,7 +176,7 @@ Give the output of the format template in json format
     
     def search_vector_db(self, args, result_dict):
         vector_db = self.vector_database
-        result = vector_db.similarity_search_with_relevance_scores(args, k=5)
+        result = vector_db.similarity_search_with_relevance_scores(args, k=10)
         nct_score_dict = self.get_nct_scores(result)
         result_dict['vector_db_scores_dict'] = nct_score_dict
         result_dict['vector_db_nct_numbers'] = list(nct_score_dict.keys())
