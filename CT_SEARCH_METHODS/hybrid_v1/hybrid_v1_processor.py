@@ -164,7 +164,7 @@ Give the output of the format template in json format
     
     def _initialize_query_df(self):
         if ProcessQueryLocationList._query_df is None:
-            ProcessQueryLocationList._query_df = pd.read_csv('/code/ct_csv/CT_CSV_15_05.csv')
+            ProcessQueryLocationList._query_df = pd.read_csv('/code/ct_csv/CT_CSV_17_05.csv')
             
             
     def get_nct_scores(self, docs:list) -> dict:
@@ -176,7 +176,7 @@ Give the output of the format template in json format
     
     def search_vector_db(self, args, result_dict):
         vector_db = self.vector_database
-        result = vector_db.similarity_search_with_relevance_scores(args, k=20)
+        result = vector_db.similarity_search_with_relevance_scores(args, k=5)
         nct_score_dict = self.get_nct_scores(result)
         result_dict['vector_db_scores_dict'] = nct_score_dict
         result_dict['vector_db_nct_numbers'] = list(nct_score_dict.keys())

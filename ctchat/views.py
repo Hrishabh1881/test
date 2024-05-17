@@ -298,6 +298,8 @@ Give the output of the format template in json format
                 payload.drop(columns=drop_cols, axis=1, inplace=True)
                 dnb_result = payload['INTERVENTIONS'].apply(lambda row: self.get_drugs_biomarkers(user_prompt=row))
                 payload['DRUGS_AND_BIOMARKERS'] = dnb_result; payload['DRUGS_AND_BIOMARKERS'].apply(lambda content: eval(content))
+                payload['PHASES'] = payload['PHASES'].apply(lambda content: eval(content) if isinstance(content, str) else content)
+                payload['CONDITIONS'] = payload['CONDITIONS'].apply(lambda content: eval(content) if isinstance(content, str) else content)
                 json_payload = pd.DataFrame(payload, columns=payload.columns).to_json(orient='records')
                 json_payload_dict = json.loads(json_payload)
                 for item in json_payload_dict:

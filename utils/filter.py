@@ -41,7 +41,7 @@ Give the output of the format template in json format
     
     def _initialize_query_df(self):
         if filter_by_value._query_df is None:
-            filter_by_value._query_df = pd.read_csv('/code/ct_csv/CT_CSV_15_05.csv')
+            filter_by_value._query_df = pd.read_csv('/code/ct_csv/CT_CSV_17_05.csv')
 
     def filter_by_cancer(self, cancer_type):
         return self._query_df[self._query_df["CONDITIONS"].str.contains(cancer_type, case=False)]
