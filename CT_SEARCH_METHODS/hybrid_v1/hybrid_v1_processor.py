@@ -551,6 +551,7 @@ Give the output of the format template in json format
         smart_df_thread.join()
         query_df = cls._query_df 
         
+        print(cls._query_df.columns)
         
         
         closest_zip_codes_w_distance = cls().get_closest_zip_codes(zip_code=zip_code)
@@ -598,6 +599,8 @@ Give the output of the format template in json format
             sorted_df_for_location_distance['PHASES'] = sorted_df_for_location_distance['PHASES'].apply(lambda element: eval(element) if isinstance(element, str) else element)
             sorted_df_for_location_distance['CONDITIONS'] = sorted_df_for_location_distance['CONDITIONS'].apply(lambda element: eval(element))   
             sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda element: eval(element) if isinstance(element, str) else element)
+            sorted_df_for_location_distance['DRUGS'] = sorted_df_for_location_distance['DRUGS'].apply(lambda element: eval(element) if isinstance(element, str) else element)
+            sorted_df_for_location_distance['BIOMARKERS'] = sorted_df_for_location_distance['BIOMARKERS'].apply(lambda element: eval(element) if isinstance(element, str) else element)
             sorted_df_for_location_distance['POINT_OF_CONTACT'] = sorted_df_for_location_distance['POINT_OF_CONTACT'].apply(lambda element: eval(element) if isinstance(element, str) else element)
             drop_cols = [col for col in sorted_df_for_location_distance.columns if 'Unnamed' in col]
             drop_cols.extend(['ZIP_STR'])
