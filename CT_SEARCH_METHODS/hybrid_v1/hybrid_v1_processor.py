@@ -7,10 +7,12 @@ from dotenv import load_dotenv
 load_dotenv()
 import json
 from langchain_community.vectorstores import Chroma
+import chromadb
 import pandas as pd
 import sys
 from uszipcode import SearchEngine
 from geopy.distance import geodesic
+from geopy.geocoders import Nominatim
 sys.path.append("/Users/suryabhosale/Documents/projects/DORIS/src/POCClinicalTrial")
 
 
@@ -377,10 +379,31 @@ Give the output of the format template in json format
     
     def _initialize_query_df(self):
         if ProcessQueryZipLocator._query_df is None:
-            ProcessQueryZipLocator._query_df = pd.read_csv('/code/ct_csv/CT_CSV_15_05.csv')
+            ProcessQueryZipLocator._query_df = pd.read_csv('/code/ct_csv/CT_CSV_23_05_ONLYUS_ZIPSTR.csv')
+            self.nct_filter_df = pd.read_csv('/code/ct_csv/CT_CSV_23_05_ONLYUS_ZIPSTR.csv')
+            
+
+    def calculate_distance(my_zipcode, location):
+        
+        def get_coordinates(zip_code):
+            search_engine = SearchEngine()
+            zip_info = search_engine.by_zipcode(zip_code)
+            center_lat, center_lon = zip_info.lat, zip_info.lng
+            return (center_lat, center_lon)
+
+        loc_w_dist = []
+        
+        coords_1 = get_coordinates(my_zipcode)
+        for loc in location:
+            zip_code = loc.get('Location Zip')
+            coords_2 = get_coordinates(zip_code)
+            distance = geodesic(coords_1, coords_2).miles
+            loc['Distance'] = distance
+            loc_w_dist.append(loc)
+        return loc_w_dist
             
     
-    def get_closest_zip_codes(self, zip_code:int, num_closest:int=500, radius=100):
+    def get_closest_zip_codes(self, zip_code:int, num_closest:int=50, radius=100):
         distances = []
         search_engine = SearchEngine()
         zip_info = search_engine.by_zipcode(zip_code)
@@ -416,12 +439,37 @@ Give the output of the format template in json format
         return ct_score_dict  
     
     
-    def search_vector_db(self, args, result_dict):
+    def contains_number(self, row, zip_list):
+        if isinstance(row, str):
+            if len(row.split()) > 0:
+                # print(zip_list, 'zip split')
+                # print(bool(set(zip_list) in set(row.split())))
+                return bool(set(zip_list) in set(row.split()))
+        else: 
+            return False
+        
+    def has_overlap(self, row, zip_list):
+        set1 = set(row)
+        set2 = set(zip_list)
+        return not set1.isdisjoint(set2)
+        
+    
+    def search_vector_db(self, args, result_dict, zip_codes):
+        df = self.nct_filter_df
+        masks = []
+        for zips in df['ZIP_STR'].apply(lambda x: x.split() if isinstance(x, str) else []):
+            masks.append(self.has_overlap(zip_codes, zips))
+        zipped_nct_list = list(df[masks]['NCT_NUMBER'])
+        # zipped_nct_list = list(df[df['ZIP_STR'].apply(lambda x: self.has_overlap(x, zip_codes))]['NCT_NUMBER'])
+        nct_filter = {"nct_number": {"$in": zipped_nct_list}}
         vector_db = self.vector_database
-        result = vector_db.similarity_search_with_relevance_scores(args)
-        nct_score_dict = self.get_nct_scores(result)
-        result_dict['vector_db_scores_dict'] = nct_score_dict
-        result_dict['vector_db_nct_numbers'] = list(nct_score_dict.keys())
+        retriever = vector_db.as_retriever(search_type='similarity', search_kwargs={'k': 10, 'filter': nct_filter})
+        result_docs = retriever.invoke(args)
+        nct_number_list = [doc.metadata['nct_number'] for doc in result_docs]
+        # result = vector_db.similarity_search_with_relevance_scores(args, k=10)
+        # nct_score_dict = self.get_nct_scores(result)
+        # result_dict['vector_db_scores_dict'] = nct_score_dict
+        result_dict['vector_db_nct_numbers'] = nct_number_list
         
         
     def get_location(self, system_prompt, user_prompt, model='gpt-4-0125-preview', temperature=0, verbose=False):
@@ -457,12 +505,15 @@ Give the output of the format template in json format
         sorted_locations = [loc for loc, _ in sorted(distances, key=lambda x: x[1])]
         return sorted_locations
         
-        
+    def filter_zip_codes(location_list, zip_codes):
+        return [location for location in location_list if location["Location Zip"] in zip_codes]
     
     @classmethod
     def process_query(cls, query:str, zip_code:int, radius:int = 100):
         result_dict = {}
-        vectordb_thread = threading.Thread(target=cls().search_vector_db, args=(query,result_dict))
+        closest_zip_codes_w_distance = cls().get_closest_zip_codes(zip_code=zip_code)
+        closest_zip_codes = [item[0] for item in closest_zip_codes_w_distance]
+        vectordb_thread = threading.Thread(target=cls().search_vector_db, args=(query,result_dict, closest_zip_codes))
         smart_df_thread = threading.Thread(target=cls().search_dataframe, args=(query,result_dict))
         vectordb_thread.start()
         smart_df_thread.start()
@@ -475,6 +526,9 @@ Give the output of the format template in json format
         closest_zip_codes_w_distance = cls().get_closest_zip_codes(zip_code=zip_code)
         closest_zip_codes = [item[0] for item in closest_zip_codes_w_distance]
         
+        # closest_zip_codes_w_distance_dict = {zip_code:dist for zip_code, dist in closest_zip_codes_w_distance}
+        # print(closest_zip_codes_w_distance_dict)
+        
         # if result_dict['location'].get('CITY', None) == '':
         #     closest_zip_codes_w_distance = cls().get_closest_zip_codes(zip_code=zip_code)
         #     closest_zip_codes = [item[0] for item in closest_zip_codes_w_distance]
@@ -484,34 +538,43 @@ Give the output of the format template in json format
             
 
         
-        scores_df = pd.DataFrame.from_dict(result_dict['vector_db_scores_dict'], orient='index', columns=['score'])
-        scores_df.reset_index(inplace=True)
-        scores_df.columns = ['NCT_NUMBER', 'score']
+        # scores_df = pd.DataFrame.from_dict(result_dict['vector_db_scores_dict'], orient='index', columns=['score'])
+        # scores_df.reset_index(inplace=True)
+        # scores_df.columns = ['NCT_NUMBER', 'score']
         
         distilled_df = query_df[query_df['NCT_NUMBER'].isin(result_dict['vector_db_nct_numbers'])]
-        distilled_df = pd.merge(distilled_df, scores_df, on='NCT_NUMBER')
+        # distilled_df = pd.merge(distilled_df, scores_df, on='NCT_NUMBER')
 
-        print(result_dict)
+        # print(distilled_df['LOCATIONS'])
 
-        distilled_df = distilled_df.sort_values(by='score', ascending=False)        
-        # distilled_df = distilled_df.dropna(subset=['ZIP'])
+        # distilled_df = distilled_df.sort_values(by='score', ascending=False)        
+        # # distilled_df = distilled_df.dropna(subset=['ZIP'])
         
-        filtered_df = pd.DataFrame()
+        # filtered_df = pd.DataFrame()
         
-        for index, row in distilled_df.iterrows():
-            for location in eval(row['LOCATIONS']):
-                if (location.get('Location Zip') in closest_zip_codes \
-                    and location.get('Location Country') == 'United States'):
-                    filtered_df = filtered_df.append(row, ignore_index=True)
-                    break
+        # for index, row in distilled_df.iterrows():
+        #     for location in eval(row['LOCATIONS']):
+        #         if (location.get('Location Zip') in list(closest_zip_codes_w_distance_dict.keys()) \
+        #             and location.get('Location Country') == 'United States'):
+        #             filtered_df = filtered_df.append(row, ignore_index=True)
+        #             break
                 
         
-        sorted_df_for_location_distance = filtered_df.copy()  
+        sorted_df_for_location_distance = distilled_df.copy()  
               
         if not sorted_df_for_location_distance.empty:
-            sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.custom_geo_sort(eval(x), closest_zip_codes))
+            sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.filter_zip_codes(eval(x), closest_zip_codes))
+            sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.custom_geo_sort(x, closest_zip_codes))
+            sorted_df_for_location_distance['PHASES'] = sorted_df_for_location_distance['PHASES'].apply(lambda element: eval(element) if isinstance(element, str) else element)
+            sorted_df_for_location_distance['CONDITIONS'] = sorted_df_for_location_distance['CONDITIONS'].apply(lambda element: eval(element))   
+            sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda element: eval(element) if isinstance(element, str) else element)
+            sorted_df_for_location_distance['POINT_OF_CONTACT'] = sorted_df_for_location_distance['POINT_OF_CONTACT'].apply(lambda element: eval(element) if isinstance(element, str) else element)
             drop_cols = [col for col in sorted_df_for_location_distance.columns if 'Unnamed' in col]
+            drop_cols.extend(['ZIP_STR'])
             sorted_df_for_location_distance.drop(columns=drop_cols, axis=1, inplace=True)
+            
+            ### NEED TO WORK ON THIS ONE! OR MAKE IT BETTER
+            # sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda loc: cls.calculate_distance(location=loc, my_zipcode=zip_code))
             return sorted_df_for_location_distance
         else:
             return pd.DataFrame()
