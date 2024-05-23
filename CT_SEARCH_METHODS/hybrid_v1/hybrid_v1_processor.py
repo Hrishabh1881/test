@@ -363,6 +363,14 @@ class ProcessQueryZipLocator():
 ---END FORMAT TEMPLATE---
 Give the output of the format template in json format
 '''
+    drugs_biomarkers_template=f'''
+    Please extract all the names of the drugs and biomarkers from the information provided
+    ---BEGIN FORMAT TEMPLATE---
+{{"DRUGS":"list of name of the drugs"
+"BIOMARKERS":"list of name of the biomarker"}}
+---END FORMAT TEMPLATE---
+Give the output of the format template in json format
+    '''
     
     def __new__(cls, *args, **kwargs):
         with cls._lock:
@@ -398,7 +406,7 @@ Give the output of the format template in json format
             zip_code = loc.get('Location Zip')
             coords_2 = get_coordinates(zip_code)
             distance = geodesic(coords_1, coords_2).miles
-            loc['Distance'] = distance
+            loc['Distance'] = round(distance, 0)
             loc_w_dist.append(loc)
         return loc_w_dist
             
@@ -452,6 +460,21 @@ Give the output of the format template in json format
         set1 = set(row)
         set2 = set(zip_list)
         return not set1.isdisjoint(set2)
+    
+    def get_drugs_biomarkers(system_prompt, user_prompt, model='gpt-4-0125-preview', temperature=0, verbose=False):
+        response = openai.chat.completions.create(
+            model=model, 
+            temperature=temperature,
+            messages=[
+                {"role":"system", "content":system_prompt},
+                {"role":"user", "content":str(user_prompt)},
+            ],
+            max_tokens = 1024,
+            response_format={ "type": "json_object" }
+            
+        )
+        res = response.choices[0].message.content
+        return res
         
     
     def search_vector_db(self, args, result_dict, zip_codes):
@@ -572,9 +595,11 @@ Give the output of the format template in json format
             drop_cols = [col for col in sorted_df_for_location_distance.columns if 'Unnamed' in col]
             drop_cols.extend(['ZIP_STR'])
             sorted_df_for_location_distance.drop(columns=drop_cols, axis=1, inplace=True)
+            # dnb_result = sorted_df_for_location_distance['INTERVENTIONS'].apply(lambda row: cls.get_drugs_biomarkers(user_prompt=row, system_prompt=cls.drugs_biomarkers_template))
+            # sorted_df_for_location_distance['DRUGS_AND_BIOMARKERS'] = dnb_result; sorted_df_for_location_distance['DRUGS_AND_BIOMARKERS'].apply(lambda content: eval(content))
             
             ### NEED TO WORK ON THIS ONE! OR MAKE IT BETTER
-            # sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda loc: cls.calculate_distance(location=loc, my_zipcode=zip_code))
+            sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda loc: cls.calculate_distance(location=loc, my_zipcode=zip_code))
             return sorted_df_for_location_distance
         else:
             return pd.DataFrame()
