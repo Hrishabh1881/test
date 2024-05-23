@@ -415,14 +415,17 @@ Give the output of the format template in json format
         distances = []
         search_engine = SearchEngine()
         zip_info = search_engine.by_zipcode(zip_code)
-        center_lat, center_lon = zip_info.lat, zip_info.lng
-        nearby_zip_codes = search_engine.by_coordinates(center_lat, center_lon, radius=radius, returns=0)
-        for zip_instance in nearby_zip_codes:
-            if zip_instance.lat and zip_instance.lng:
-                distance = geodesic((center_lat, center_lon), (zip_instance.lat, zip_instance.lng)).miles
-                distances.append((zip_instance.zipcode, distance))
-        closest_zip_codes = [(item[0], round(item[1], 2)) for item in sorted(distances, key=lambda x: x[1])]
-        return closest_zip_codes
+        if zip_info:
+            center_lat, center_lon = zip_info.lat, zip_info.lng
+            nearby_zip_codes = search_engine.by_coordinates(center_lat, center_lon, radius=radius, returns=0)
+            for zip_instance in nearby_zip_codes:
+                if zip_instance.lat and zip_instance.lng:
+                    distance = geodesic((center_lat, center_lon), (zip_instance.lat, zip_instance.lng)).miles
+                    distances.append((zip_instance.zipcode, distance))
+            closest_zip_codes = [(item[0], round(item[1], 2)) for item in sorted(distances, key=lambda x: x[1])]
+            return closest_zip_codes
+        else:
+            return []
     
     
     def get_closest_by_city(self, city):
@@ -478,21 +481,25 @@ Give the output of the format template in json format
         
     
     def search_vector_db(self, args, result_dict, zip_codes):
-        df = self.nct_filter_df
-        masks = []
-        for zips in df['ZIP_STR'].apply(lambda x: x.split() if isinstance(x, str) else []):
-            masks.append(self.has_overlap(zip_codes, zips))
-        zipped_nct_list = list(df[masks]['NCT_NUMBER'])
-        # zipped_nct_list = list(df[df['ZIP_STR'].apply(lambda x: self.has_overlap(x, zip_codes))]['NCT_NUMBER'])
-        nct_filter = {"nct_number": {"$in": zipped_nct_list}}
-        vector_db = self.vector_database
-        retriever = vector_db.as_retriever(search_type='similarity', search_kwargs={'k': 10, 'filter': nct_filter})
-        result_docs = retriever.invoke(args)
-        nct_number_list = [doc.metadata['nct_number'] for doc in result_docs]
-        # result = vector_db.similarity_search_with_relevance_scores(args, k=10)
-        # nct_score_dict = self.get_nct_scores(result)
-        # result_dict['vector_db_scores_dict'] = nct_score_dict
-        result_dict['vector_db_nct_numbers'] = nct_number_list
+        if zip_codes:
+            df = self.nct_filter_df
+            masks = []
+            for zips in df['ZIP_STR'].apply(lambda x: x.split() if isinstance(x, str) else []):
+                masks.append(self.has_overlap(zip_codes, zips))
+            zipped_nct_list = list(df[masks]['NCT_NUMBER'])
+            # zipped_nct_list = list(df[df['ZIP_STR'].apply(lambda x: self.has_overlap(x, zip_codes))]['NCT_NUMBER'])
+            nct_filter = {"nct_number": {"$in": zipped_nct_list}}
+            vector_db = self.vector_database
+            retriever = vector_db.as_retriever(search_type='similarity', search_kwargs={'k': 10, 'filter': nct_filter})
+            result_docs = retriever.invoke(args)
+            nct_number_list = [doc.metadata['nct_number'] for doc in result_docs]
+            # result = vector_db.similarity_search_with_relevance_scores(args, k=10)
+            # nct_score_dict = self.get_nct_scores(result)
+            # result_dict['vector_db_scores_dict'] = nct_score_dict
+            result_dict['vector_db_nct_numbers'] = nct_number_list
+        else:
+            result_dict['vector_db_nct_numbers'] = []
+            
         
         
     def get_location(self, system_prompt, user_prompt, model='gpt-4-0125-preview', temperature=0, verbose=False):
