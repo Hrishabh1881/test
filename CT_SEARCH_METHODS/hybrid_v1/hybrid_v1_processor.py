@@ -490,7 +490,7 @@ Give the output of the format template in json format
             # zipped_nct_list = list(df[df['ZIP_STR'].apply(lambda x: self.has_overlap(x, zip_codes))]['NCT_NUMBER'])
             nct_filter = {"nct_number": {"$in": zipped_nct_list}}
             vector_db = self.vector_database
-            retriever = vector_db.as_retriever(search_type='similarity', search_kwargs={'k': 10, 'filter': nct_filter})
+            retriever = vector_db.as_retriever(search_type='similarity', search_kwargs={'k': 300, 'filter': nct_filter})
             result_docs = retriever.invoke(args)
             nct_number_list = [doc.metadata['nct_number'] for doc in result_docs]
             # result = vector_db.similarity_search_with_relevance_scores(args, k=10)
@@ -610,6 +610,7 @@ Give the output of the format template in json format
             
             ### NEED TO WORK ON THIS ONE! OR MAKE IT BETTER
             sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda loc: cls.calculate_distance(location=loc, my_zipcode=zip_code))
+            print(len(sorted_df_for_location_distance))
             return sorted_df_for_location_distance
         else:
             return pd.DataFrame()
