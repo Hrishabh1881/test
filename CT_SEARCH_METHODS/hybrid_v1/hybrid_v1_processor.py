@@ -13,6 +13,7 @@ import sys
 from uszipcode import SearchEngine
 from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
+from chromadb import Settings
 sys.path.append("/Users/suryabhosale/Documents/projects/DORIS/src/POCClinicalTrial")
 
 
@@ -382,6 +383,10 @@ Give the output of the format template in json format
     
     
     def _initialize_vector_db(self):
+        # chroma_client = chromadb.Client()
+        # client = chromadb.PersistentClient(path="./chroma")
+        # chroma_client = chromadb.Client(Settings(persist_directory='/code/CT_VDB/VDB_V_02_ALPHA'))
+        # self.search_vector_db = chroma_client
         self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_02_ALPHA', embedding_function=OpenAIEmbeddings())
         
     
@@ -482,6 +487,7 @@ Give the output of the format template in json format
     
     def search_vector_db(self, args, result_dict, zip_codes):
         if zip_codes:
+            chroma_client = chromadb.Client()
             df = self.nct_filter_df
             masks = []
             for zips in df['ZIP_STR'].apply(lambda x: x.split() if isinstance(x, str) else []):
@@ -492,13 +498,30 @@ Give the output of the format template in json format
             vector_db = self.vector_database
             retriever = vector_db.as_retriever(search_type='similarity', search_kwargs={'k': 300, 'filter': nct_filter})
             result_docs = retriever.invoke(args)
-            nct_number_list = [doc.metadata['nct_number'] for doc in result_docs]
+            chroma_client = chromadb.PersistentClient(path='/code/CT_VDB/VDB_V_02_ALPHA')
+            if zip_codes[0] not in [col_obj.name for col_obj in chroma_client.list_collections()]:
+                print(f'-----CREATING {zip_codes[0]} COLLECTION-----')
+                collection = chroma_client.create_collection(name=zip_codes[0], metadata={"hnsw:space": "cosine"})
+                collection.upsert(
+                    documents=[doc.page_content for doc in result_docs],
+                    metadatas=[doc.metadata for doc in result_docs],
+                    ids=[doc.metadata['nct_number'] for doc in result_docs]
+                )
+            else:
+                print(f'-----ACQUIRED {zip_codes[0]} COLLECTION-----')
+                collection = chroma_client.get_collection(name=zip_codes[0])
+            # if collection.name in [col_obj.name for col_obj in chroma_client.list_collections()]:
+            nct_number_list, nct_relevance_scores = collection.query(query_texts=[args], n_results=300).get('ids')[0],collection.query(query_texts=[args], n_results=300).get('distances')[0]
+            # nct_number_list = [doc.metadata['nct_number'] for doc in result_docs]
             # result = vector_db.similarity_search_with_relevance_scores(args, k=10)
             # nct_score_dict = self.get_nct_scores(result)
             # result_dict['vector_db_scores_dict'] = nct_score_dict
+            print(nct_number_list)
             result_dict['vector_db_nct_numbers'] = nct_number_list
+            result_dict['nct_scores'] = {item[0]:item[1] for item in zip(nct_number_list, nct_relevance_scores)}
         else:
             result_dict['vector_db_nct_numbers'] = []
+            result_dict['nct_scores'] = []
             
         
         
@@ -574,6 +597,8 @@ Give the output of the format template in json format
         # scores_df.columns = ['NCT_NUMBER', 'score']
         
         distilled_df = query_df[query_df['NCT_NUMBER'].isin(result_dict['vector_db_nct_numbers'])]
+        distilled_df['REL_SCORES'] = distilled_df['NCT_NUMBER'].map(result_dict['nct_scores'])
+        distilled_df_sorted = distilled_df.sort_values(by='REL_SCORES', ascending=True)
         # distilled_df = pd.merge(distilled_df, scores_df, on='NCT_NUMBER')
 
         # print(distilled_df['LOCATIONS'])
@@ -591,7 +616,7 @@ Give the output of the format template in json format
         #             break
                 
         
-        sorted_df_for_location_distance = distilled_df.copy()  
+        sorted_df_for_location_distance = distilled_df_sorted.copy()  
               
         if not sorted_df_for_location_distance.empty:
             sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.filter_zip_codes(eval(x), closest_zip_codes))
