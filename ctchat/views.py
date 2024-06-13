@@ -231,11 +231,11 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
     serializer_class = DorisChatSerializer
     
     def post (self, request, *args, **kwargs):
-        query = request.data.get('query', [])
+        query = request.data.get('query', '')
         zipcode = request.data.get('zip_code', None)
-        radius = request.data.get('zip_code', None)
+        radius = request.data.get('radius', None)
         if zipcode:
-            payload = hybrid_v1_processor.ProcessQueryZipLocator.process_query(query=query, zip_code=zipcode)
+            payload = hybrid_v1_processor.ProcessQueryZipLocator.process_query(query=query, zip_code=zipcode, radius=radius)
             if query:
                 if payload.empty:
                     json_payload_dict = {}
@@ -244,7 +244,12 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
                     json_payload_dict = json.loads(json_payload)  
                 return JsonResponse({'Message':json_payload_dict})
             else:
-                return JsonResponse({'Message':{}})
+                if payload.empty:
+                    json_payload_dict = {}
+                else:
+                    json_payload = pd.DataFrame(payload, columns=payload.columns).to_json(orient='records')
+                    json_payload_dict = json.loads(json_payload)  
+                return JsonResponse({'Message':json_payload_dict})
         else:
             return JsonResponse({'Message':'Zip code not entered'})
         
