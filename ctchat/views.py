@@ -233,7 +233,7 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
     def post (self, request, *args, **kwargs):
         query = request.data.get('query', '')
         zipcode = request.data.get('zip_code', None)
-        radius = request.data.get('radius', None)
+        radius = request.data.get('radius', 120)
         if zipcode:
             payload = hybrid_v1_processor.ProcessQueryZipLocator.process_query(query=query, zip_code=zipcode, radius=radius)
             if query:

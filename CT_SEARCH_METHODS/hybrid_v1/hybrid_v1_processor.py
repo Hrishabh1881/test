@@ -536,7 +536,10 @@ Give the output of the format template in json format
             #     collection = chroma_client.get_collection(name=f'{zip_codes[0]}_{str(radius)}')
             # # if collection.name in [col_obj.name for col_obj in chroma_client.list_collections()]:
             # print(args, 'this is args')
-            if args:
+            print(args, 'this is args')
+            print(args != '', 'args equality')
+            if args != '':
+                print('in here')
                 # nct_number_list, nct_relevance_scores = collection.query(query_texts=[args], 
                 #                                                         n_results=300,
                 #                                                         ).get('ids')[0],collection.query(query_texts=[args], n_results=300).get('distances')[0]
@@ -547,7 +550,6 @@ Give the output of the format template in json format
                 ranker_results = self.doc_ranker(query=args, text_chunks=[doc.page_content for doc in result_docs], topN=len(result_docs))
                 print('reranked_results')
                 from pprint import pprint
-                pprint(json.loads(ranker_results[0]), indent=4)
                 ranked_nct_numbers = [json.loads(doc)['nct_number'] for doc in ranker_results]
                 # print(nct_number_list)
                 result_dict['vector_db_nct_numbers'] = ranked_nct_numbers
@@ -599,7 +601,7 @@ Give the output of the format template in json format
         return [location for location in location_list if location["Location Zip"] in zip_codes]
     
     @classmethod
-    def process_query(cls, query, zip_code:int, radius:int = 100):
+    def process_query(cls, query, zip_code:int, radius:int = 120):
         print('user provided radius: {}'.format(radius))
         result_dict = {}
         closest_zip_codes_w_distance = cls().get_closest_zip_codes(zip_code=zip_code, radius=radius)
