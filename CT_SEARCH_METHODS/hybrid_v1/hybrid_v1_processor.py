@@ -523,36 +523,37 @@ Give the output of the format template in json format
             
             
             
-            # if f'{zip_codes[0]}_{str(radius)}' not in [col_obj.name for col_obj in chroma_client.list_collections()]:
-            #     print(f'-----CREATING {zip_codes[0]}- radius_{str(radius)} COLLECTION-----')
-            #     collection = chroma_client.create_collection(name=f'{zip_codes[0]}_{str(radius)}', metadata={"hnsw:space": "cosine"})
-            #     collection.upsert(
-            #         documents=[doc.page_content for doc in result_docs],
-            #         metadatas=[doc.metadata for doc in result_docs],
-            #         ids=[doc.metadata['nct_number'] for doc in result_docs]
-            #     )
-            # else:
-            #     print(f'-----ACQUIRED {zip_codes[0]}- radius_{str(radius)} COLLECTION-----')
-            #     collection = chroma_client.get_collection(name=f'{zip_codes[0]}_{str(radius)}')
+            if f'{zip_codes[0]}_{str(radius)}' not in [col_obj.name for col_obj in chroma_client.list_collections()]:
+                print(f'-----CREATING {zip_codes[0]}- radius_{str(radius)} COLLECTION-----')
+                collection = chroma_client.create_collection(name=f'{zip_codes[0]}_{str(radius)}', metadata={"hnsw:space": "cosine"})
+                collection.upsert(
+                    documents=[doc.page_content for doc in result_docs],
+                    metadatas=[doc.metadata for doc in result_docs],
+                    ids=[doc.metadata['nct_number'] for doc in result_docs]
+                )
+            else:
+                print(f'-----ACQUIRED {zip_codes[0]}- radius_{str(radius)} COLLECTION-----')
+                collection = chroma_client.get_collection(name=f'{zip_codes[0]}_{str(radius)}')
             # # if collection.name in [col_obj.name for col_obj in chroma_client.list_collections()]:
             # print(args, 'this is args')
-            print(args, 'this is args')
-            print(args != '', 'args equality')
             if args != '':
                 print('in here')
-                # nct_number_list, nct_relevance_scores = collection.query(query_texts=[args], 
-                #                                                         n_results=300,
-                #                                                         ).get('ids')[0],collection.query(query_texts=[args], n_results=300).get('distances')[0]
+                nct_number_list, nct_relevance_scores = collection.query(query_texts=[args], 
+                                                                        n_results=300,
+                                                                        ).get('ids')[0],collection.query(query_texts=[args], n_results=300).get('distances')[0]
                 # nct_number_list = [doc.metadata['nct_number'] for doc in result_docs]
                 # result = vector_db.similarity_search_with_relevance_scores(args, k=10)
                 # nct_score_dict = self.get_nct_scores(result)
                 # result_dict['vector_db_scores_dict'] = nct_score_dict
-                ranker_results = self.doc_ranker(query=args, text_chunks=[doc.page_content for doc in result_docs], topN=len(result_docs))
-                print('reranked_results')
-                from pprint import pprint
-                ranked_nct_numbers = [json.loads(doc)['nct_number'] for doc in ranker_results]
+                
+                # ranker_results = self.doc_ranker(query=args, text_chunks=[doc.page_content for doc in result_docs], topN=len(result_docs))
+                # ranked_nct_numbers = [json.loads(doc)['nct_number'] for doc in ranker_results]
+                # result_dict['vector_db_nct_numbers'] = ranked_nct_numbers
+                # print('reranked_results')
+                # from pprint import pprint
+                
                 # print(nct_number_list)
-                result_dict['vector_db_nct_numbers'] = ranked_nct_numbers
+                result_dict['vector_db_nct_numbers'] = nct_number_list
                 # result_dict['nct_scores'] = {item[0]:item[1] for item in zip(nct_number_list, nct_relevance_scores)}
             else:
                 result_dict['vector_db_nct_numbers'] = zipped_nct_list
@@ -640,6 +641,7 @@ Give the output of the format template in json format
         distilled_df = query_df[query_df['NCT_NUMBER'].isin(result_dict['vector_db_nct_numbers'])]
         distilled_df.set_index('NCT_NUMBER', inplace=True)
         distilled_df = distilled_df.reindex(result_dict['vector_db_nct_numbers'])
+        distilled_df.reset_index(inplace=True)
         # if result_dict['nct_scores']:
         #     distilled_df['REL_SCORES'] = distilled_df['NCT_NUMBER'].map(result_dict['nct_scores'])
         #     distilled_df = distilled_df.sort_values(by='REL_SCORES', ascending=True)
