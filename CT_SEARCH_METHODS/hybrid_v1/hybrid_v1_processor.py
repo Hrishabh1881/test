@@ -384,10 +384,6 @@ Give the output of the format template in json format
     
     
     def _initialize_vector_db(self):
-        # chroma_client = chromadb.Client()
-        # client = chromadb.PersistentClient(path="./chroma")
-        # chroma_client = chromadb.Client(Settings(persist_directory='/code/CT_VDB/VDB_V_02_ALPHA'))
-        # self.search_vector_db = chroma_client
         self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_02_ALPHA', embedding_function=OpenAIEmbeddings())
         
     
@@ -423,7 +419,7 @@ Give the output of the format template in json format
             
     
     def get_closest_zip_codes(self, zip_code:int, radius, num_closest:int=50):
-        print('radius in zip codes', radius)
+        print('CURRENT RADIUS', radius)
         distances = []
         search_engine = SearchEngine()
         zip_info = search_engine.by_zipcode(zip_code)
@@ -510,16 +506,12 @@ Give the output of the format template in json format
             for zips in df['ZIP_STR'].apply(lambda x: x.split() if isinstance(x, str) else []):
                 masks.append(self.has_overlap(zip_codes, zips))
             zipped_nct_list = list(df[masks]['NCT_NUMBER'])
-            # zipped_nct_list = list(df[df['ZIP_STR'].apply(lambda x: self.has_overlap(x, zip_codes))]['NCT_NUMBER'])
             nct_filter = {"nct_number": {"$in": zipped_nct_list}}
             vector_db = self.vector_database
             retriever = vector_db.as_retriever(search_type='similarity', search_kwargs={'k': 300, 'filter': nct_filter})
             result_docs = retriever.invoke(args)
             chroma_client = chromadb.PersistentClient(path='/code/CT_VDB/VDB_V_02_ALPHA')
             
-           
-            # print([eval(doc).get('nct_number') for doc in ranker_results])
-            #NCT01570998
             
             
             
@@ -534,18 +526,17 @@ Give the output of the format template in json format
             else:
                 print(f'-----ACQUIRED {zip_codes[0]}- radius_{str(radius)} COLLECTION-----')
                 collection = chroma_client.get_collection(name=f'{zip_codes[0]}_{str(radius)}')
-            # # if collection.name in [col_obj.name for col_obj in chroma_client.list_collections()]:
-            # print(args, 'this is args')
+
             if args != '':
-                print('in here')
+                print(f'KEYWORD INPUT: {args}')
                 nct_number_list, nct_relevance_scores = collection.query(query_texts=[args], 
                                                                         n_results=300,
                                                                         ).get('ids')[0],collection.query(query_texts=[args], n_results=300).get('distances')[0]
-                # nct_number_list = [doc.metadata['nct_number'] for doc in result_docs]
-                # result = vector_db.similarity_search_with_relevance_scores(args, k=10)
-                # nct_score_dict = self.get_nct_scores(result)
-                # result_dict['vector_db_scores_dict'] = nct_score_dict
+
                 
+                
+                # NOTE: USE BELOW IF USING CUSTOM CROSS ENCODER
+                # ==================================================================================================
                 # ranker_results = self.doc_ranker(query=args, text_chunks=[doc.page_content for doc in result_docs], topN=len(result_docs))
                 # ranked_nct_numbers = [json.loads(doc)['nct_number'] for doc in ranker_results]
                 # result_dict['vector_db_nct_numbers'] = ranked_nct_numbers
@@ -554,8 +545,12 @@ Give the output of the format template in json format
                 
                 # print(nct_number_list)
                 result_dict['vector_db_nct_numbers'] = nct_number_list
+                
+                # NOTE: USE BELOW IF USING CUSTOM CROSS ENCODER
+                # ==================================================================================================
                 # result_dict['nct_scores'] = {item[0]:item[1] for item in zip(nct_number_list, nct_relevance_scores)}
             else:
+                print(f'KEYWORD INPUT: NOT ENTERED')
                 result_dict['vector_db_nct_numbers'] = zipped_nct_list
                 result_dict['nct_scores'] = []
         else:
@@ -613,61 +608,26 @@ Give the output of the format template in json format
         smart_df_thread.start()
         vectordb_thread.join()
         smart_df_thread.join()
-        query_df = cls._query_df 
-        
-        print(cls._query_df.columns)
-        
-        
-        # closest_zip_codes_w_distance = cls().get_closest_zip_codes(zip_code=zip_code, radius=)
-        # closest_zip_codes = [item[0] for item in closest_zip_codes_w_distance]
-        
-        # closest_zip_codes_w_distance_dict = {zip_code:dist for zip_code, dist in closest_zip_codes_w_distance}
-        # print(closest_zip_codes_w_distance_dict)
-        
-        # if result_dict['location'].get('CITY', None) == '':
-        #     closest_zip_codes_w_distance = cls().get_closest_zip_codes(zip_code=zip_code)
-        #     closest_zip_codes = [item[0] for item in closest_zip_codes_w_distance]
-        # else:
-        #     closest_zip_codes_w_distance = cls().get_closest_by_city(city=result_dict['location']['CITY'])
-        #     closest_zip_codes = [item[0] for item in closest_zip_codes_w_distance]
-            
-
-        
-        # scores_df = pd.DataFrame.from_dict(result_dict['vector_db_scores_dict'], orient='index', columns=['score'])
-        # scores_df.reset_index(inplace=True)
-        # scores_df.columns = ['NCT_NUMBER', 'score']
-        
+        query_df = cls._query_df         
 
         distilled_df = query_df[query_df['NCT_NUMBER'].isin(result_dict['vector_db_nct_numbers'])]
         distilled_df.set_index('NCT_NUMBER', inplace=True)
         distilled_df = distilled_df.reindex(result_dict['vector_db_nct_numbers'])
         distilled_df.reset_index(inplace=True)
+        
+        # NOTE: UNCOMMENT THE CODE BELOW IF USING EXTERNAL CROSS ENCODER
+        # ==================================================================================================
         # if result_dict['nct_scores']:
         #     distilled_df['REL_SCORES'] = distilled_df['NCT_NUMBER'].map(result_dict['nct_scores'])
         #     distilled_df = distilled_df.sort_values(by='REL_SCORES', ascending=True)
         # distilled_df = pd.merge(distilled_df, scores_df, on='NCT_NUMBER')
 
-        # print(distilled_df['LOCATIONS'])
 
-        # distilled_df = distilled_df.sort_values(by='score', ascending=False)        
-        # # distilled_df = distilled_df.dropna(subset=['ZIP'])
-        
-        # filtered_df = pd.DataFrame()
-        
-        # for index, row in distilled_df.iterrows():
-        #     for location in eval(row['LOCATIONS']):
-        #         if (location.get('Location Zip') in list(closest_zip_codes_w_distance_dict.keys()) \
-        #             and location.get('Location Country') == 'United States'):
-        #             filtered_df = filtered_df.append(row, ignore_index=True)
-        #             break
                 
         
         sorted_df_for_location_distance = distilled_df.copy()  
-
-        print(sorted_df_for_location_distance, 'here here')
         
         if not sorted_df_for_location_distance.empty:
-            print('in here')
             sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.filter_zip_codes(eval(x), closest_zip_codes))
             sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda x: cls.custom_geo_sort(x, closest_zip_codes))
             sorted_df_for_location_distance['PHASES'] = sorted_df_for_location_distance['PHASES'].apply(lambda element: eval(element) if isinstance(element, str) else element)
@@ -679,17 +639,16 @@ Give the output of the format template in json format
             drop_cols = [col for col in sorted_df_for_location_distance.columns if 'Unnamed' in col]
             drop_cols.extend(['ZIP_STR'])
             sorted_df_for_location_distance.drop(columns=drop_cols, axis=1, inplace=True)
-            # dnb_result = sorted_df_for_location_distance['INTERVENTIONS'].apply(lambda row: cls.get_drugs_biomarkers(user_prompt=row, system_prompt=cls.drugs_biomarkers_template))
-            # sorted_df_for_location_distance['DRUGS_AND_BIOMARKERS'] = dnb_result; sorted_df_for_location_distance['DRUGS_AND_BIOMARKERS'].apply(lambda content: eval(content))
             
-            ### NEED TO WORK ON THIS ONE! OR MAKE IT BETTER
+            # NOTE: CURRENTLY CALCULATING EUCLIDEAN DISTANCE 
+            # ==================================================================================================
             sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda loc: cls.calculate_distance(location=loc, my_zipcode=zip_code))
             return sorted_df_for_location_distance
         else:
             return pd.DataFrame()
         
-        #NOTE: This is for using csv with location exploded into different rows:
-        
+        # NOTE: THIS IS FOR USING CSV WITH LOCATION EXPLODED INTO DIFFERENT ROWS
+        # ==================================================================================================
         # filtered_df = distilled_df[distilled_df['ZIP'].isin(closest_zip_codes)]
         # drop_cols = [col for col in filtered_df.columns if 'Unnamed' in col]
         # filtered_df.drop(columns=drop_cols, axis=1, inplace=True)
@@ -704,7 +663,8 @@ Give the output of the format template in json format
         
 
         
-        
+#NOTE: TESTING
+# ==================================================================================================       
 # if __name__ == '__main__':
 #     items = ProcessQuery.process_query("What are potential clinical trial options for a patient with metastatic breast cancer in Irvine area?")
 #     print(items)
