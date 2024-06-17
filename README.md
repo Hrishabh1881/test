@@ -4,6 +4,16 @@
 
 This project provides two API endpoints to handle clinical trial queries. The first endpoint allows users to search for clinical trials based on a query and location, while the second endpoint retrieves detailed information about clinical trials based on their NCT number.
 
+## Getting started:
+Run project:
+```
+docker-compose -f docker-compose-dev.yml up --build
+```
+Development server:
+```
+http://0.0.0.0:8006/
+```
+
 ## Endpoints
 
 ### 1. ClinicalTrialsLLMViewHybridZipLocator
