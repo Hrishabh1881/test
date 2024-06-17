@@ -503,6 +503,8 @@ Give the output of the format template in json format
             chroma_client = chromadb.Client()
             df = self.nct_filter_df
             masks = []
+            
+            # Create a sub-vector database consisting of documents of NCT_NUMBERS that are within a user defined geo-radius (default is 120 miles). 
             for zips in df['ZIP_STR'].apply(lambda x: x.split() if isinstance(x, str) else []):
                 masks.append(self.has_overlap(zip_codes, zips))
             zipped_nct_list = list(df[masks]['NCT_NUMBER'])
@@ -514,7 +516,8 @@ Give the output of the format template in json format
             
             
             
-            
+            # If a collection of a given zipcode and the user defined radius has not been created, a collection will be created using
+            # documents from the result_docs
             if f'{zip_codes[0]}_{str(radius)}' not in [col_obj.name for col_obj in chroma_client.list_collections()]:
                 print(f'-----CREATING {zip_codes[0]}- radius_{str(radius)} COLLECTION-----')
                 collection = chroma_client.create_collection(name=f'{zip_codes[0]}_{str(radius)}', metadata={"hnsw:space": "cosine"})
@@ -523,10 +526,12 @@ Give the output of the format template in json format
                     metadatas=[doc.metadata for doc in result_docs],
                     ids=[doc.metadata['nct_number'] for doc in result_docs]
                 )
+            # Else the collection is retrieved 
             else:
-                print(f'-----ACQUIRED {zip_codes[0]}- radius_{str(radius)} COLLECTION-----')
+                print(f'-----RETRIEVED {zip_codes[0]}- radius_{str(radius)} COLLECTION-----')
                 collection = chroma_client.get_collection(name=f'{zip_codes[0]}_{str(radius)}')
 
+            # If filtering keyword is present, a query is run against the collection to filter the most relevant clinical trials
             if args != '':
                 print(f'KEYWORD INPUT: {args}')
                 nct_number_list, nct_relevance_scores = collection.query(query_texts=[args], 
@@ -549,12 +554,13 @@ Give the output of the format template in json format
                 # NOTE: USE BELOW IF USING CUSTOM CROSS ENCODER
                 # ==================================================================================================
                 # result_dict['nct_scores'] = {item[0]:item[1] for item in zip(nct_number_list, nct_relevance_scores)}
+            
+            # Else all the clinical trials within a 120 mile radius of the zip code are returned
             else:
                 print(f'KEYWORD INPUT: NOT ENTERED')
                 result_dict['vector_db_nct_numbers'] = zipped_nct_list
                 result_dict['nct_scores'] = []
         else:
-            print('GOING HERE')
             result_dict['vector_db_nct_numbers'] = []
             result_dict['nct_scores'] = []
             
