@@ -1,4 +1,4 @@
-# dorisclinicaltrials
+# Doris Feature: Clinical Trials Finder
 
 # Clinical Trials API
 
