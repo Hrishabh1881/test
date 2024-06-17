@@ -4,7 +4,15 @@
 
 This project provides two API endpoints to handle clinical trial queries. The first endpoint allows users to search for clinical trials based on a query and location, while the second endpoint retrieves detailed information about clinical trials based on their NCT number.
 
+
+
+
 ## Getting started:
+Clone project:
+```
+git clone git@github.com:surya-bhosale/dorisclinicaltrials.git
+cd dorisclinicaltrials
+```
 Run project:
 ```
 docker-compose -f docker-compose-dev.yml up --build
