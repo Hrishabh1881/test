@@ -29,7 +29,7 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
     Uses a hybrid processor to fetch relevant clinical trial information based on the query and location.
     """
     
-    serializer_class = DorisChatSerializer
+    serializer_class = ClinicalTrials_w_ZipSerializer
     
     def post (self, request, *args, **kwargs):
         query = request.data.get('query', '')
