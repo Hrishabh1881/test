@@ -25,7 +25,7 @@ os.environ['OPENAI_API_KEY'] = OPEN_API_KEY
 class ClinicalTrialsLLMView(CreateAPIView):
     # permission_classes = (IsAuthenticated,)
     # authentication_classes = (TokenAuthentication,)
-    serializer_class = DorisChatSerializer
+    serializer_class = ClinicalTrials_w_ZipSerializer
     
     df = None
     converted_list_to_dict = None
@@ -111,7 +111,7 @@ class ClinicalTrialsLLMView(CreateAPIView):
         
         
 class ClinicalTrialsLLMViewHybrid(CreateAPIView):
-    serializer_class = DorisChatSerializer
+    serializer_class = ClinicalTrials_w_ZipSerializer
     def post(self, request, *args, **kwargs):
         query = request.data.get('query', [])
         payload = hybrid_v1_processor.ProcessQuery.process_query(query)
@@ -131,7 +131,7 @@ class ClinicalTrialsLLMViewHybridLocationList(CreateAPIView):
     
     permission_classes = (IsAuthenticated,)
     authentication_classes = (TokenAuthentication,)
-    serializer_class = DorisChatSerializer
+    serializer_class = ClinicalTrials_w_ZipSerializer
     
     def post(self, request, *args, **kwargs):
         query = request.data.get('query', [])
@@ -233,12 +233,14 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
     Uses a hybrid processor to fetch relevant clinical trial information based on the query and location.
     """
     
-    serializer_class = DorisChatSerializer
+    serializer_class = ClinicalTrials_w_ZipSerializer
     
     def post (self, request, *args, **kwargs):
         query = request.data.get('query', '')
         zipcode = request.data.get('zip_code', None)
         radius = request.data.get('radius', 120)
+        serializer = self.get_serializer(data=request.data)
+        # print(serializer.is_valid())
         if zipcode:
             payload = hybrid_v1_processor.ProcessQueryZipLocator.process_query(query=query, zip_code=zipcode, radius=radius)
             if query:
