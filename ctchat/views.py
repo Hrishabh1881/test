@@ -16,6 +16,8 @@ from pandasai import SmartDataframe
 from pandasai.llm import OpenAI
 from utils.config import *
 from utils.filter import *
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 
 from CT_SEARCH_METHODS.hybrid_v1 import hybrid_v1_processor
 os.environ['OPENAI_API_KEY'] = OPEN_API_KEY 
@@ -52,7 +54,7 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
                     json_payload_dict = json.loads(json_payload)  
                 return JsonResponse({'Message':json_payload_dict})
         else:
-            return JsonResponse({'Message':'Zip code not entered'})
+            return JsonResponse({'Message':'Zip code not entered'}, status=400)
         
 
 
@@ -64,6 +66,14 @@ class GetClinicalTrialDetailsView(APIView):
     """
 
     _instance = None
+    
+    search_param = openapi.Parameter(
+        'nct_number', 
+        openapi.IN_QUERY,
+        description="nct_number to get clinical trial specific information",
+        type=openapi.TYPE_STRING
+)
+    
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
@@ -110,6 +120,7 @@ class GetClinicalTrialDetailsView(APIView):
         res = response.choices[0].message.content
         return res
 
+    @swagger_auto_schema(manual_parameters=[search_param])
     def get(self, request, *args, **kwargs):
         # Extract filter parameters from the request query parameters
         filter_params = dict(request.query_params)
