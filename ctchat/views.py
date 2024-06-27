@@ -167,8 +167,10 @@ class GetClinicalTrialDetailsView(APIView):
         
         # Get user zip - a.) to sort the locations
         
-        user_zip = Preference.objects.get(user_id_id=self.request.user.user_id).zip_code
-        
+        if Preference.objects.filter(user_id_id=self.request.user.user_id).exists():
+            user_zip = Preference.objects.get(user_id_id=self.request.user.user_id).zip_code
+        else:
+            user_zip = None
         if nct_number:
             # Filter the payload by NCT number
             payload = self.Filter.filter_by_nct_number(nct_number=nct_number)
@@ -186,8 +188,9 @@ class GetClinicalTrialDetailsView(APIView):
                 # Convert string content to list if necessary
                 payload['PHASES'] = payload['PHASES'].apply(lambda content: eval(content) if isinstance(content, str) else content)
                 payload['LOCATIONS'] = payload['LOCATIONS'].apply(lambda content: eval(content) if isinstance(content, str) else content)
-                payload['LOCATIONS'].apply(lambda loc: calculate_distance(location=loc, my_zipcode=user_zip))
-                payload['LOCATIONS'] = payload['LOCATIONS'].apply(lambda x: sorted(x, key=lambda y: y['Distance']))
+                if user_zip:
+                    payload['LOCATIONS'].apply(lambda loc: calculate_distance(location=loc, my_zipcode=user_zip))
+                    payload['LOCATIONS'] = payload['LOCATIONS'].apply(lambda x: sorted(x, key=lambda y: y['Distance']))
                 payload['CONDITIONS'] = payload['CONDITIONS'].apply(lambda content: eval(content) if isinstance(content, str) else content)
                 
                 
