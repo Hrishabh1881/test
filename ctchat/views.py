@@ -18,6 +18,10 @@ from utils.config import *
 from utils.filter import *
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from doris_schema.models import *
+from uszipcode import SearchEngine
+from geopy.distance import geodesic
+from geopy.geocoders import Nominatim
 
 from CT_SEARCH_METHODS.hybrid_v1 import hybrid_v1_processor
 os.environ['OPENAI_API_KEY'] = OPEN_API_KEY 
@@ -67,6 +71,9 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
 
 
 class GetClinicalTrialDetailsView(APIView):
+    
+    authentication_classes=[TokenAuthentication,]
+    permission_classes=[IsAuthenticated,]
     """
     API view to fetch detailed information about clinical trials based on NCT number.
     Utilizes a singleton pattern to ensure a single instance of the view.
@@ -130,9 +137,37 @@ class GetClinicalTrialDetailsView(APIView):
 
     @swagger_auto_schema(manual_parameters=[search_param])
     def get(self, request, *args, **kwargs):
+        
+        def calculate_distance(my_zipcode, location):
+        
+            def get_coordinates(zip_code):
+                search_engine = SearchEngine()
+                zip_info = search_engine.by_zipcode(zip_code)
+                center_lat, center_lon = zip_info.lat, zip_info.lng
+                return (center_lat, center_lon)
+
+            loc_w_dist = []
+            
+            coords_1 = get_coordinates(my_zipcode)
+            for loc in location:
+                if len(loc.get('Location Zip')) == 5:
+                    zip_code = loc.get('Location Zip')
+                    coords_2 = get_coordinates(zip_code)
+                    distance = geodesic(coords_1, coords_2).miles
+                    loc['Distance'] = round(distance, 0)
+                    loc_w_dist.append(loc)
+                else:
+                    loc['Distance'] = float('inf')
+            return loc_w_dist
+        
+        
         # Extract filter parameters from the request query parameters
         filter_params = dict(request.query_params)
         nct_number = filter_params.get('nct_number', [])
+        
+        # Get user zip - a.) to sort the locations
+        
+        user_zip = Preference.objects.get(user_id_id=self.request.user.user_id).zip_code
         
         if nct_number:
             # Filter the payload by NCT number
@@ -151,8 +186,12 @@ class GetClinicalTrialDetailsView(APIView):
                 # Convert string content to list if necessary
                 payload['PHASES'] = payload['PHASES'].apply(lambda content: eval(content) if isinstance(content, str) else content)
                 payload['LOCATIONS'] = payload['LOCATIONS'].apply(lambda content: eval(content) if isinstance(content, str) else content)
+                payload['LOCATIONS'].apply(lambda loc: calculate_distance(location=loc, my_zipcode=user_zip))
+                payload['LOCATIONS'] = payload['LOCATIONS'].apply(lambda x: sorted(x, key=lambda y: y['Distance']))
                 payload['CONDITIONS'] = payload['CONDITIONS'].apply(lambda content: eval(content) if isinstance(content, str) else content)
                 
+                
+                payload.drop('ZIP_STR', axis=1, inplace=True)
                 # Convert the payload to JSON format and parse it into a dictionary
                 json_payload = pd.DataFrame(payload, columns=payload.columns).to_json(orient='records')
                 json_payload_dict = json.loads(json_payload)

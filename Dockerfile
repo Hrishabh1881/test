@@ -13,7 +13,7 @@ COPY requirements.txt /code/
 RUN apt update -y \
     && apt upgrade -y \
     && pip install -r requirements.txt \
-    && pip install -i https://test.pypi.org/simple/ doris-schema==3.2
+    && pip install -i https://test.pypi.org/simple/ doris-schema==3.17
 
 COPY . /code/
 
