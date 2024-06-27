@@ -14,9 +14,12 @@ from uszipcode import SearchEngine
 from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
 from chromadb import Settings
-sys.path.append("/Users/suryabhosale/Documents/projects/DORIS/src/POCClinicalTrial")
-
-
+from CT_SEARCH_METHODS.hybrid_v1.data_dedplication_helper import create_attribute_mapping
+sys.path.append("POCClinicalTrial")
+import os
+from copy import deepcopy
+#OPENAI_API_KEY removed from here
+# os.environ["OPENAI_API_KEY"] = ""
 
 class ProcessQueryZipLocator():
     
@@ -51,7 +54,7 @@ Give the output of the format template in json format
     
     
     def _initialize_vector_db(self):
-        self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_02_ALPHA', embedding_function=OpenAIEmbeddings())
+        self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_02_ALPHA', embedding_function=OpenAIEmbeddings(openai_api_key="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"))
         
     
     def _initialize_corss_encoder(self):
@@ -63,7 +66,33 @@ Give the output of the format template in json format
         if ProcessQueryZipLocator._query_df is None:
             ProcessQueryZipLocator._query_df = pd.read_csv('/code/ct_csv/CT_CSV_23_05_ONLYUS_ZIPSTR.csv')
             self.nct_filter_df = pd.read_csv('/code/ct_csv/CT_CSV_23_05_ONLYUS_ZIPSTR.csv')
-            
+            deduplication_fields = ["BIOMARKERS", "DRUGS"]
+            field_mapping = create_attribute_mapping(ProcessQueryZipLocator._query_df, deduplication_fields)
+            ProcessQueryZipLocator.deduplication_mapping = field_mapping
+            # ProcessQueryZipLocator.remove_duplicates_in_response(["HER2", " estrogen receptor", " RCB"], "BIOMARKERS")
+
+    @classmethod
+    def remove_duplicates_in_response(cls, value_in, feild_name):
+        if isinstance(value_in, str):
+            response_value = eval(value_in)
+        else:
+            response_value = value_in
+        if isinstance(response_value, list):
+            with open("CT_SEARCH_METHODS/hybrid_v1/global_deduplication_mapping.json", "r") as fin:
+                mapping_json = json.loads(fin.read())
+            field_mapping_data = mapping_json[feild_name]
+            temp_query_mapping = deepcopy(cls.deduplication_mapping)
+            temp_query_mapping[feild_name].update({k.lower():v for k,v in field_mapping_data.items()})
+            final_response_value = []
+            # final_response_value = [temp_query_mapping[each_val.strip().lower()] if each_val.strip().lower() in temp_query_mapping else each_val for each_val in response_value]
+            for each_val in response_value:
+                if each_val.strip().lower() in temp_query_mapping[feild_name]:
+                    final_response_value.append(temp_query_mapping[feild_name][each_val.strip().lower()])
+                else:
+                    each_val
+            cls.deduplication_mapping = temp_query_mapping            
+            return final_response_value
+        return value_in
 
     def calculate_distance(my_zipcode, location):
         
@@ -276,6 +305,7 @@ Give the output of the format template in json format
     @classmethod
     def process_query(cls, query, zip_code:int, radius:int = 120):
         print('user provided radius: {}'.format(radius))
+        print(query, zip_code, radius)
         result_dict = {}
         closest_zip_codes_w_distance = cls().get_closest_zip_codes(zip_code=zip_code, radius=radius)
         closest_zip_codes = [item[0] for item in closest_zip_codes_w_distance]
@@ -285,8 +315,7 @@ Give the output of the format template in json format
         smart_df_thread.start()
         vectordb_thread.join()
         smart_df_thread.join()
-        query_df = cls._query_df         
-
+        query_df = cls._query_df      
         distilled_df = query_df[query_df['NCT_NUMBER'].isin(result_dict['vector_db_nct_numbers'])]
         distilled_df.set_index('NCT_NUMBER', inplace=True)
         distilled_df = distilled_df.reindex(result_dict['vector_db_nct_numbers'])
@@ -313,8 +342,10 @@ Give the output of the format template in json format
             sorted_df_for_location_distance['PHASES'] = sorted_df_for_location_distance['PHASES'].apply(lambda element: eval(element) if isinstance(element, str) else element)
             sorted_df_for_location_distance['CONDITIONS'] = sorted_df_for_location_distance['CONDITIONS'].apply(lambda element: eval(element))   
             sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda element: eval(element) if isinstance(element, str) else element)
-            sorted_df_for_location_distance['DRUGS'] = sorted_df_for_location_distance['DRUGS'].apply(lambda element: eval(element) if isinstance(element, str) else element)
-            sorted_df_for_location_distance['BIOMARKERS'] = sorted_df_for_location_distance['BIOMARKERS'].apply(lambda element: eval(element) if isinstance(element, str) else element)
+            # sorted_df_for_location_distance['DRUGS'] = sorted_df_for_location_distance['DRUGS'].apply(lambda element: eval(element) if isinstance(element, str) else element)
+            # sorted_df_for_location_distance['BIOMARKERS'] = sorted_df_for_location_distance['BIOMARKERS'].apply(lambda element: eval(element) if isinstance(element, str) else element)
+            sorted_df_for_location_distance['DRUGS'] = sorted_df_for_location_distance['DRUGS'].apply(cls.remove_duplicates_in_response, args=("DRUGS",))
+            sorted_df_for_location_distance['BIOMARKERS'] = sorted_df_for_location_distance['BIOMARKERS'].apply(cls.remove_duplicates_in_response, args=("BIOMARKERS",))
             sorted_df_for_location_distance['POINT_OF_CONTACT'] = sorted_df_for_location_distance['POINT_OF_CONTACT'].apply(lambda element: eval(element) if isinstance(element, str) else element)
             drop_cols = [col for col in sorted_df_for_location_distance.columns if 'Unnamed' in col]
             drop_cols.extend(['ZIP_STR'])
@@ -323,9 +354,14 @@ Give the output of the format template in json format
             # NOTE: CURRENTLY CALCULATING EUCLIDEAN DISTANCE 
             # ==================================================================================================
             sorted_df_for_location_distance['LOCATIONS'] = sorted_df_for_location_distance['LOCATIONS'].apply(lambda loc: cls.calculate_distance(location=loc, my_zipcode=zip_code))
-            return sorted_df_for_location_distance
+            # sorted_df_for_location_distance["BIOMARKERS"] = cls.deduplication_mapping
+            biomarker_list = [each_val for val in sorted_df_for_location_distance["BIOMARKERS"] for each_val in val]
+            drugs_list = [each_val for val in sorted_df_for_location_distance["DRUGS"] for each_val in val]
+            unique_biomarkers = sorted(list(set(biomarker_list)), key = lambda x:x.lower())
+            unique_drugs = sorted(list(set(drugs_list)), key = lambda x:x.lower())
+            return sorted_df_for_location_distance, unique_biomarkers, unique_drugs
         else:
-            return pd.DataFrame()
+            return pd.DataFrame(), [], []
         
         # NOTE: THIS IS FOR USING CSV WITH LOCATION EXPLODED INTO DIFFERENT ROWS
         # ==================================================================================================
@@ -346,5 +382,5 @@ Give the output of the format template in json format
 #NOTE: TESTING
 # ==================================================================================================       
 # if __name__ == '__main__':
-#     items = ProcessQuery.process_query("What are potential clinical trial options for a patient with metastatic breast cancer in Irvine area?")
+#     items = ProcessQueryZipLocator.process_query("breast cancer clinical trials for HER2/Neu Negative biomarkers", 60631)
 #     print(items)
