@@ -230,12 +230,16 @@ Give the output of the format template in json format
             # If filtering keyword is present, a query is run against the collection to filter the most relevant clinical trials
             if args != '':
                 print(f'KEYWORD INPUT: {args}')
-                nct_number_list, nct_relevance_scores = collection.query(query_texts=[args], 
+                nct_number_list, nct_relevance_scores = collection.query(query_texts=[args],
+                                                                        where_document={"$contains": args},
+                                                                        n_results=300,
+                                                                        ).get('ids')[0],collection.query(query_texts=[args], where_document={"$contains": args}, n_results=300).get('distances')[0]
+
+                
+                if len(nct_number_list) == 0:
+                    nct_number_list, nct_relevance_scores = collection.query(query_texts=[args],
                                                                         n_results=300,
                                                                         ).get('ids')[0],collection.query(query_texts=[args], n_results=300).get('distances')[0]
-
-                print(f"NCT Numbers : {nct_number_list}")
-                
                 # NOTE: USE BELOW IF USING CUSTOM CROSS ENCODER
                 # ==================================================================================================
                 # ranker_results = self.doc_ranker(query=args, text_chunks=[doc.page_content for doc in result_docs], topN=len(result_docs))
@@ -249,7 +253,7 @@ Give the output of the format template in json format
                 
                 # NOTE: USE BELOW IF USING CUSTOM CROSS ENCODER
                 # ==================================================================================================
-                # result_dict['nct_scores'] = {item[0]:item[1] for item in zip(nct_number_list, nct_relevance_scores)}
+                result_dict['nct_scores'] = {item[0]:item[1] for item in zip(nct_number_list, nct_relevance_scores)}
             
             # Else all the clinical trials within a 120 mile radius of the zip code are returned
             else:
@@ -316,6 +320,9 @@ Give the output of the format template in json format
         distilled_df.set_index('NCT_NUMBER', inplace=True)
         distilled_df = distilled_df.reindex(result_dict['vector_db_nct_numbers'])
         distilled_df.reset_index(inplace=True)
+        # if result_dict['nct_scores']:
+        #     distilled_df['REL_SCORES'] = distilled_df['NCT_NUMBER'].map(result_dict['nct_scores'])
+        #     distilled_df = distilled_df[distilled_df.REL_SCORES < 0.55]
         
         # NOTE: UNCOMMENT THE CODE BELOW IF USING EXTERNAL CROSS ENCODER
         # ==================================================================================================
