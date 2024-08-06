@@ -17,7 +17,7 @@ structured_llm_parser = llm.with_structured_output(GradeDocuments)
 
 system = """You are a medicine and oncology keyword extractor. \n 
     You will look at the string and parse or extract all the important key words \n
-    Give a list of important keywords from the string"""
+    Give a list of important keywords from the string. Only give keywords from the string, do not make up adjascent keywords"""
     
     
 grade_prompt = ChatPromptTemplate.from_messages(

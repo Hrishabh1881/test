@@ -235,10 +235,17 @@ Give the output of the format template in json format
                 print(f'KEYWORD INPUT: {args}')
                 from hybrid_v1.keyword_parser import keyword_extractor
                 keywords = keyword_extractor.invoke({"query":args}).keyword_list
-                nct_number_list, nct_relevance_scores = collection.query(query_texts=[args],
+                print(keywords)
+                if len(keywords) > 1:
+                    nct_number_list, nct_relevance_scores = collection.query(query_texts=[args],
                                                                         where_document={"$or":[{"$contains": word} for word in keywords]},
                                                                         n_results=300,
                                                                         ).get('ids')[0],collection.query(query_texts=[args],  where_document={"$or":[{"$contains": word} for word in keywords]}, n_results=300).get('distances')[0]
+                else:
+                    nct_number_list, nct_relevance_scores = collection.query(query_texts=[args],
+                                                                        where_document={"$contains": args},
+                                                                        n_results=300,
+                                                                        ).get('ids')[0],collection.query(query_texts=[args],  where_document={"$contains": args}, n_results=300).get('distances')[0]
 
                 
                 if len(nct_number_list) == 0:
