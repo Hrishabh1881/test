@@ -1,3 +1,6 @@
+import sys
+if '/code/CT_SEARCH_METHODS/' not in sys.path:
+    sys.path.append('/code/CT_SEARCH_METHODS/')
 import threading
 import time
 import openai
@@ -230,13 +233,16 @@ Give the output of the format template in json format
             # If filtering keyword is present, a query is run against the collection to filter the most relevant clinical trials
             if args != '':
                 print(f'KEYWORD INPUT: {args}')
+                from hybrid_v1.keyword_parser import keyword_extractor
+                keywords = keyword_extractor.invoke({"query":args}).keyword_list
                 nct_number_list, nct_relevance_scores = collection.query(query_texts=[args],
-                                                                        where_document={"$contains": args},
+                                                                        where_document={"$or":[{"$contains": word} for word in keywords]},
                                                                         n_results=300,
-                                                                        ).get('ids')[0],collection.query(query_texts=[args], where_document={"$contains": args}, n_results=300).get('distances')[0]
+                                                                        ).get('ids')[0],collection.query(query_texts=[args],  where_document={"$or":[{"$contains": word} for word in keywords]}, n_results=300).get('distances')[0]
 
                 
                 if len(nct_number_list) == 0:
+                    #NOTE: HOW DO WE WANT TO HANDLE IT IF A KEYWORD IS INPUT BUT TRIAL LIST IS 0
                     nct_number_list, nct_relevance_scores = collection.query(query_texts=[args],
                                                                         n_results=300,
                                                                         ).get('ids')[0],collection.query(query_texts=[args], n_results=300).get('distances')[0]
