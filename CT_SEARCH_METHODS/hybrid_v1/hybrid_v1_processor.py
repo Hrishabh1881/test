@@ -21,6 +21,7 @@ from CT_SEARCH_METHODS.hybrid_v1.data_dedplication_helper import create_attribut
 sys.path.append("POCClinicalTrial")
 import os
 from copy import deepcopy
+from textblob import TextBlob
 #OPENAI_API_KEY removed from here
 # os.environ["OPENAI_API_KEY"] = ""
 
@@ -232,6 +233,7 @@ Give the output of the format template in json format
 
             # If filtering keyword is present, a query is run against the collection to filter the most relevant clinical trials
             if args != '':
+                args = str(TextBlob(args).correct())
                 print(f'KEYWORD INPUT: {args}')
                 from hybrid_v1.keyword_parser import keyword_extractor
                 keywords = keyword_extractor.invoke({"query":args}).keyword_list
