@@ -21,6 +21,7 @@ from CT_SEARCH_METHODS.hybrid_v1.data_dedplication_helper import create_attribut
 sys.path.append("POCClinicalTrial")
 import os
 from copy import deepcopy
+from textblob import TextBlob
 #OPENAI_API_KEY removed from here
 # os.environ["OPENAI_API_KEY"] = ""
 
@@ -57,7 +58,7 @@ Give the output of the format template in json format
     
     
     def _initialize_vector_db(self):
-        self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_02_ALPHA', embedding_function=OpenAIEmbeddings(openai_api_key="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"))
+        self.vector_database = Chroma(persist_directory='/code/CT_VDB/VDB_V_02_ALPHA_TITLE', embedding_function=OpenAIEmbeddings(openai_api_key="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"))
         
     
     def _initialize_corss_encoder(self):
@@ -211,7 +212,7 @@ Give the output of the format template in json format
             vector_db = self.vector_database
             retriever = vector_db.as_retriever(search_type='similarity', search_kwargs={'k': 300, 'filter': nct_filter})
             result_docs = retriever.invoke(args)
-            chroma_client = chromadb.PersistentClient(path='/code/CT_VDB/VDB_V_02_ALPHA')
+            chroma_client = chromadb.PersistentClient(path='/code/CT_VDB/VDB_V_02_ALPHA_TITLE')
             
             
             
@@ -232,13 +233,14 @@ Give the output of the format template in json format
 
             # If filtering keyword is present, a query is run against the collection to filter the most relevant clinical trials
             if args != '':
+                args = str(TextBlob(args).correct())
                 print(f'KEYWORD INPUT: {args}')
                 from hybrid_v1.keyword_parser import keyword_extractor
                 keywords = keyword_extractor.invoke({"query":args}).keyword_list
                 print(keywords)
                 if len(keywords) > 1:
                     nct_number_list, nct_relevance_scores = collection.query(query_texts=[args],
-                                                                        where_document={"$or":[{"$contains": word} for word in keywords]},
+                                                                        where_document={"$and":[{"$contains": word} for word in keywords]},
                                                                         n_results=300,
                                                                         ).get('ids')[0],collection.query(query_texts=[args],  where_document={"$or":[{"$contains": word} for word in keywords]}, n_results=300).get('distances')[0]
                 else:
