@@ -177,4 +177,5 @@ cache/
 ctchat/.env
 Notebooks/*.csv
 Notebooks/PAI_CT_Main.ipynb
+Notebooks/recency_weighting.ipynb
 Clinical_Trials/*
