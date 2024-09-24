@@ -255,6 +255,13 @@ Give the output of the format template in json format
                     nct_number_list, nct_relevance_scores = collection.query(query_texts=[args],
                                                                         n_results=300,
                                                                         ).get('ids')[0],collection.query(query_texts=[args], n_results=300).get('distances')[0]
+                    search_results = {number:scores for number, scores in zip(nct_number_list, nct_relevance_scores)}
+                    print(search_results)
+                    top_25_percent_index = int(len(search_results) * 0.25)
+                    top_25_percent_dict = dict(list(search_results.items())[:top_25_percent_index])
+                    print(top_25_percent_index)
+                    nct_number_list = list(top_25_percent_dict.keys())
+                    print(nct_number_list)
                 # NOTE: USE BELOW IF USING CUSTOM CROSS ENCODER
                 # ==================================================================================================
                 # ranker_results = self.doc_ranker(query=args, text_chunks=[doc.page_content for doc in result_docs], topN=len(result_docs))
