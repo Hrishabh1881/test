@@ -1,4 +1,6 @@
 from django.shortcuts import render
+if '/code/' not in sys.path:
+    sys.path.append('/code/')
 import pandas as pd
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
