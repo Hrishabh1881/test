@@ -33,35 +33,35 @@ pipeline {
             }
         }
 
-        // stage("Clean Up") {
-        //     agent {
-        //         label "${env.NODE_LABEL}"
-        //     }
-        //     steps {
-        //         sh "sudo docker system prune -f --all"        
-        //     }
-        // }
+        stage("Clean Up") {
+            agent {
+                label "${env.NODE_LABEL}"
+            }
+            steps {
+                sh "sudo docker system prune -f --all"        
+            }
+        }
 
-        // stage("Build & Deploy") {
-        //     agent {
-        //         label "${env.NODE_LABEL}"
-        //     }
-        //     steps {
-        //         script {
-        //             // Custom build and deploy logic per branch
-        //             if (env.BRANCH_NAME == 'dev/main') {
-        //                 sh "sudo docker compose -f docker-compose-dev.yml up --build --force-recreate -d"
+        stage("Build & Deploy") {
+            agent {
+                label "${env.NODE_LABEL}"
+            }
+            steps {
+                script {
+                    // Custom build and deploy logic per branch
+                    if (env.BRANCH_NAME == 'dev/main') {
+                        sh "sudo docker compose -f docker-compose-dev.yml up --build --force-recreate -d"
 
-        //             } else if (env.BRANCH_NAME == 'staging/main') {
-        //                 sh "sudo docker compose -f docker-compose-dev.yml up --build --force-recreate -d"
+                    } else if (env.BRANCH_NAME == 'staging/main') {
+                        sh "sudo docker compose -f docker-compose-dev.yml up --build --force-recreate -d"
                         
-        //             } else if (env.BRANCH_NAME == 'prod/main') {
-        //                 sh "sudo docker compose -f docker-compose-dev.yml up --build --force-recreate -d"
+                    } else if (env.BRANCH_NAME == 'prod/main') {
+                        sh "sudo docker compose -f docker-compose-dev.yml up --build --force-recreate -d"
                         
-        //             }
-        //         }
-        //     }
-        // }
+                    }
+                }
+            }
+        }
     }
     post { 
         always { 
