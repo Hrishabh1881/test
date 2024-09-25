@@ -90,7 +90,7 @@ pipeline {
                         emailext ( 
                             subject: "${jobName} - Build ${buildNumber} - ${pipelineStatus.toUpperCase()}", 
                             body: body, 
-                            to: 'hrishabh.mandhan@pyrack.com',
+                            to: 'surya@dorisjv.com,shekhar@dorisjv.com,pavan@dorisjv.com,anup@dorisjv.com,hrishabh.mandhan@pyrack.com',
                             replyTo: 'hrishabh.mandhan@pyrack.com',
                             mimeType: 'text/html', 
                             
