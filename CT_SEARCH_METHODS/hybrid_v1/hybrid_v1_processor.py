@@ -152,6 +152,7 @@ Give the output of the format template in json format
     
     
     
+    
     def get_nct_scores(self, docs:list) -> dict:
         ct_score_dict = {}
         for doc in docs:
