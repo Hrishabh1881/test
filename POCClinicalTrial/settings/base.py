@@ -40,11 +40,22 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-
-    'corsheaders'
+    'doris_schema',
+    'corsheaders',
+    'drf_yasg'
 ]
 
 CORS_ALLOW_ALL_ORIGINS=True
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'api_key': {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'Authorization'
+        },
+    },
+}
 
 
 MIDDLEWARE = [
@@ -77,6 +88,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'POCClinicalTrial.wsgi.application'
+
+AUTH_USER_MODEL = 'doris_schema.DorisUser'
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
@@ -148,6 +161,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(os.path.dirname(BASE_DIR), "media/")
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+
 SESSION_CACHE_ALIAS = "default"
 
 gateways = netifaces.gateways()

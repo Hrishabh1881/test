@@ -166,7 +166,7 @@ ct_csv/*
 CT_Database/*
 CT_SEARCH_METHODS/hybrid_v1/CT_VDB/*
 CT_SEARCH_METHODS/hybrid_v1/*.csv
-CT_SEARCH_METHODS/hybrid_v1/*.json
+# CT_SEARCH_METHODS/hybrid_v1/*.json
 CT_Test_Answers/*
 CT_VDB/*
 result_tests/*
@@ -177,3 +177,5 @@ cache/
 ctchat/.env
 Notebooks/*.csv
 Notebooks/PAI_CT_Main.ipynb
+Notebooks/recency_weighting.ipynb
+Clinical_Trials/*
