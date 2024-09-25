@@ -42,6 +42,7 @@ class ClinicalTrialsLLMViewHybridZipLocator(CreateAPIView):
     
     serializer_class = ClinicalTrials_w_ZipSerializer
     
+    
     def post (self, request, *args, **kwargs):
         query = request.data.get('query', '')
         zipcode = request.data.get('zip_code', None)
