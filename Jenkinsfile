@@ -56,7 +56,7 @@ pipeline {
                         sh "sudo docker compose -f docker-compose-dev.yml up --build --force-recreate -d"
                         
                     } else if (env.BRANCH_NAME == 'prod/main') {
-                        sh "sudo docker compose -f docker-compose-dev.yml up --build --force-recreate -d"
+                        sh "sudo docker compose -f docker-compose-prod.yml up --build --force-recreate -d"
                         
                     }
                 }
