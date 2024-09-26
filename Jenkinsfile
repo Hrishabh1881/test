@@ -32,7 +32,16 @@ pipeline {
                 checkout scmGit(branches: [[name: "${env.BRANCH_NAME}"]], extensions: [], userRemoteConfigs: [[credentialsId: "${env.GITHUB_CREDENTIALS}", url: 'git@github.com:surya-bhosale/dorisclinicaltrials.git']])
             }
         }
-
+       
+        stage("Stopping Container") {
+            agent {
+                label "${env.NODE_LABEL}"
+            }
+            steps {
+                sh "sudo docker stop $(sudo docker ps -q)"        
+            }
+       }
+        
         stage("Clean Up") {
             agent {
                 label "${env.NODE_LABEL}"
