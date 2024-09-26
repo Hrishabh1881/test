@@ -38,7 +38,14 @@ pipeline {
                 label "${env.NODE_LABEL}"
             }
             steps {
-                sh 'sudo docker stop $(sudo docker ps -q)'        
+                sh '''
+                    containers=$(sudo docker ps -q)
+                    if [ ! -z "$containers" ]; then
+                    sudo docker stop $containers
+                    else
+                    echo "No running containers to stop."
+                    fi
+                '''
             }
        }
 
