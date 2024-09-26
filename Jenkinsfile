@@ -33,6 +33,15 @@ pipeline {
             }
         }
 
+        stage("Stopping Container") {
+            agent {
+                label "${env.NODE_LABEL}"
+            }
+            steps {
+                sh "sudo docker stop $(sudo docker ps -q)"        
+            }
+       }
+
         stage("Clean Up") {
             agent {
                 label "${env.NODE_LABEL}"
@@ -56,7 +65,7 @@ pipeline {
                         sh "sudo docker compose -f docker-compose-dev.yml up --build --force-recreate -d"
                         
                     } else if (env.BRANCH_NAME == 'prod/main') {
-                        sh "sudo docker compose -f docker-compose-dev.yml up --build --force-recreate -d"
+                        sh "sudo docker compose -f docker-compose-prod.yml up --build --force-recreate -d"
                         
                     }
                 }
