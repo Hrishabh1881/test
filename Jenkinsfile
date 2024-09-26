@@ -38,7 +38,7 @@ pipeline {
                 label "${env.NODE_LABEL}"
             }
             steps {
-                sh "sudo docker stop $(sudo docker ps -q)"        
+                sh 'sudo docker stop $(sudo docker ps -q)'        
             }
        }
         
