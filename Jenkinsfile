@@ -24,6 +24,15 @@ pipeline {
             }
         }
 
+        stage("Deleting Buffer and Cache") {
+            agent {
+                label "${env.NODE_LABEL}"
+            }
+            steps {
+                sh 'sudo echo 3 >/proc/sys/vm/drop_caches'        
+            }
+        }
+
         stage("Checkout Code") {
             agent {
                 label "${env.NODE_LABEL}"
@@ -32,7 +41,7 @@ pipeline {
                 checkout scmGit(branches: [[name: "${env.BRANCH_NAME}"]], extensions: [], userRemoteConfigs: [[credentialsId: "${env.GITHUB_CREDENTIALS}", url: 'git@github.com:surya-bhosale/dorisclinicaltrials.git']])
             }
         }
-       
+
         stage("Stopping Container") {
             agent {
                 label "${env.NODE_LABEL}"
@@ -48,7 +57,7 @@ pipeline {
                 '''
             }
        }
-        
+
         stage("Clean Up") {
             agent {
                 label "${env.NODE_LABEL}"
