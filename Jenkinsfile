@@ -24,6 +24,15 @@ pipeline {
             }
         }
 
+        stage("Deleting Buffer and Cache") {
+            agent {
+                label "${env.NODE_LABEL}"
+            }
+            steps {
+                sh 'sudo echo 3 >/proc/sys/vm/drop_caches'        
+            }
+        }
+
         stage("Checkout Code") {
             agent {
                 label "${env.NODE_LABEL}"
