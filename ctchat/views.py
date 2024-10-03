@@ -25,7 +25,6 @@ from doris_schema.models import *
 from uszipcode import SearchEngine
 from geopy.distance import geodesic
 from geopy.geocoders import Nominatim
-
 from CT_SEARCH_METHODS.hybrid_v1 import hybrid_v1_processor
 os.environ['OPENAI_API_KEY'] = OPEN_API_KEY 
 
